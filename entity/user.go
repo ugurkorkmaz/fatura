@@ -2,7 +2,7 @@ package entity
 
 import "encoding/json"
 
-type UserData struct {
+type User struct {
 	VknTckn         string `json:"vknTckn"`
 	Unvan           string `json:"unvan"`
 	Ad              string `json:"ad"`
@@ -26,13 +26,14 @@ type UserData struct {
 	MersisNo        string `json:"mersisNo"`
 }
 
-func (u *UserData) Default() {}
+// TODO: implement the methods.
+func (u *User) Default() {}
 
-func (u *UserData) Validate() bool {
+// TODO: implement the methods.
+func (u *User) Validate() bool {
 	return true
 }
-
-func (u *UserData) Json() string {
+func (u *User) Json() string {
 	_json, err := json.Marshal(u)
 	if err != nil {
 		return ""
