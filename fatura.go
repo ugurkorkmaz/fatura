@@ -34,6 +34,10 @@ var client *http.Client = &http.Client{}
 type (
 	Fatura interface {
 		GetTestCredentials() (username, password string, err error)
+		SetDebug(bool) Fatura
+		GetDebug() bool
+		SetCridetials(username, password string) Fatura
+		GetCridetials() (username, password string)
 		gateway(path Path) string
 	}
 	fatura struct {
@@ -62,6 +66,25 @@ func New() Fatura {
 		document:   document.Invoice,
 		debug:      false,
 	}
+}
+
+func (f *fatura) SetDebug(debug bool) Fatura {
+	f.debug = debug
+	return f
+}
+
+func (f *fatura) GetDebug() bool {
+	return f.debug
+}
+
+func (f *fatura) SetCridetials(username, password string) Fatura {
+	f.username = username
+	f.password = password
+	return f
+}
+
+func (f *fatura) GetCridetials() (username, password string) {
+	return f.username, f.password
 }
 
 func (f *fatura) GetTestCredentials() (username, password string, err error) {
