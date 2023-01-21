@@ -1,5 +1,6 @@
 package document
 
+// Document is a type of enum
 type Type int
 
 const (
