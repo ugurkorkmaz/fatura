@@ -39,6 +39,7 @@ type (
 		SetCridetials(username, password string) Fatura
 		GetCridetials() (username, password string)
 		Login() error
+		Logout() error
 		gateway(path Path) string
 	}
 	fatura struct {
@@ -151,6 +152,34 @@ func (f *fatura) Login() error {
 	return nil
 }
 
+func (f *fatura) Logout() error {
+	if f.token == "" {
+		return errors.New("token is empty")
+	}
+	res, err := client.PostForm(f.gateway(LOGIN), url.Values{
+		"assoscmd": []string{"logout"},
+		"token":    []string{f.token},
+	})
+	if err != nil {
+		return errors.New("Error while sending request: " + err.Error())
+	}
+
+	jsonData, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.New("Error while reading response: " + err.Error())
+	}
+
+	var data map[string]interface{}
+	err = json.Unmarshal(jsonData, &data)
+	if err != nil {
+		return errors.New("Error while parsing response: " + err.Error())
+	}
+	f.username = ""
+	f.password = ""
+	f.token = ""
+	return nil
+
+}
 func (f *fatura) gateway(path Path) string {
 	if f.debug {
 		return string(TEST) + string(path)

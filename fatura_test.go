@@ -59,3 +59,22 @@ func TestLogin(t *testing.T) {
 		t.Error("Login() failed")
 	}
 }
+
+func TestLogout(t *testing.T) {
+	username, password, err := fatura_new.GetTestCredentials()
+	if err != nil {
+		t.Error("GetTestCredentials() failed")
+	}
+
+	f := fatura_new.SetCridetials(username, password)
+	f.SetDebug(true)
+	err = f.Login()
+	if err != nil {
+		t.Error("Login() failed")
+	}
+
+	err = f.Logout()
+	if err != nil {
+		t.Error("Logout() failed")
+	}
+}
