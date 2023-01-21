@@ -45,3 +45,17 @@ func TestGetTestCredentials(t *testing.T) {
 	}
 	assert.Equal(t, "1", password)
 }
+
+func TestLogin(t *testing.T) {
+	username, password, err := fatura_new.GetTestCredentials()
+	if err != nil {
+		t.Error("GetTestCredentials() failed")
+	}
+
+	f := fatura_new.SetCridetials(username, password)
+	f.SetDebug(true)
+	err = f.Login()
+	if err != nil {
+		t.Error("Login() failed")
+	}
+}

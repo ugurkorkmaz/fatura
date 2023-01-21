@@ -38,6 +38,7 @@ type (
 		GetDebug() bool
 		SetCridetials(username, password string) Fatura
 		GetCridetials() (username, password string)
+		Login() error
 		gateway(path Path) string
 	}
 	fatura struct {
@@ -111,6 +112,43 @@ func (f *fatura) GetTestCredentials() (username, password string, err error) {
 		return "", "", errors.New("Error while parsing response: " + err.Error())
 	}
 	return data["userid"].(string), "1", nil
+}
+
+func (f *fatura) Login() error {
+	if f.username == "" || f.password == "" {
+		return errors.New("username or password is empty")
+	}
+	assoscmd := []string{"anologin"}
+	if f.debug {
+		assoscmd = []string{"login"}
+	}
+	res, err := client.PostForm(f.gateway(LOGIN), url.Values{
+		"assoscmd": assoscmd,
+		"userid":   []string{f.username},
+		"sifre":    []string{f.password},
+		"sifre2":   []string{f.password},
+		"parola":   []string{f.password},
+	})
+	if err != nil {
+		return errors.New("Error while sending request: " + err.Error())
+	}
+
+	jsonData, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.New("Error while reading response: " + err.Error())
+	}
+
+	var data map[string]interface{}
+	err = json.Unmarshal(jsonData, &data)
+	if err != nil {
+		return errors.New("Error while parsing response: " + err.Error())
+	}
+
+	if data["token"] == nil {
+		return errors.New("all credentials are wrong")
+	}
+	f.token = data["token"].(string)
+	return nil
 }
 
 func (f *fatura) gateway(path Path) string {
