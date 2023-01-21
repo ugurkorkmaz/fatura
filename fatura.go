@@ -87,7 +87,7 @@ func (f *fatura) GetTestCredentials() (username, password string, err error) {
 	if data["userid"].(string) == "" {
 		return "", "", errors.New("Error while parsing response: " + err.Error())
 	}
-	return data["userid"].(string), data["password"].(string), nil
+	return data["userid"].(string), "1", nil
 }
 
 func (f *fatura) gateway(path Path) string {
