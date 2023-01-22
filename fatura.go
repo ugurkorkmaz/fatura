@@ -55,10 +55,16 @@ type (
 		StartSmsVerification(phone string) (string, error)
 		// Get oid sms verification, step 2.
 		EndSmsVerification(oid, code string, invocies []string) error
+		// Create a new draft.
+		CreateDraft() error
+		// Delete a draft.
+		DeleteDraft(document document.Type, reasons string) error
 		// Extends the getter interface.
 		getter
 		// Extends the setter interface.
 		setter
+		// Extends the lister interface.
+		lister
 	}
 	// Getter interface.
 	getter interface {
@@ -72,10 +78,11 @@ type (
 		GetDebug() bool
 		// Get the user information from the server.
 		GetUser() (user *entity.User, err error)
-
+		// Get the document type.
 		GetDocument(uuid.UUID) (*entity.Array, error)
-
+		// Get the document download url.
 		GetDownloadURL(id uuid.UUID, signed bool) (string, error)
+		// Get the document html content.
 		GetHtml(id uuid.UUID, signed bool) ([]byte, error)
 	}
 	// Setter interface.
@@ -88,9 +95,6 @@ type (
 		UpdateUser(user *entity.User) (err error)
 		// Set the document type.
 		SetDocumentType(document.Type) Fatura
-
-		CreateDraft() error
-		DeleteDraft(document document.Type, reasons string) error
 	}
 	lister interface {
 		CancellationRequest() string
@@ -492,4 +496,129 @@ func (b *bearer) GetDownloadURL(id uuid.UUID, signed bool) (string, error) {
 // Get the html of the document.
 func (b *bearer) GetHtml(id uuid.UUID, signed bool) ([]byte, error) {
 	return nil, errors.New("not implemented")
+}
+
+// TODO
+func (b *bearer) CancellationRequest() string {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) ObjectionRequest() string {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) GetRequests(start, end string) []string {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) GetAll(start, end string) {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) GetAllIssuedToMe(start, end, hourlySearch string) {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) FilterDocuments(document.Type) {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) SelectColumn(column, key string) string {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) mapColumn(data []string) entity.Array {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) SetFilters(filters []string) lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) SetLimit(limit, offset int) lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) SortAsc() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) SortDesc() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) SetRowCount(int) lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) RowCount() int {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) OnlySigned() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) OnlyUnsigned() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) OnlyDeleted() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) OnlyCurrent() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) OnlyInvoice() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) OnlyProducerReceipt() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) OnlySelfEmployedReceipt() lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) FindRecipientName(string) lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) FindRecipientId(string) lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) FindEttn(string) lister {
+	panic("not implemented")
+}
+
+// TODO
+func (b *bearer) FindDocumentId(string) lister {
+	panic("not implemented")
 }
