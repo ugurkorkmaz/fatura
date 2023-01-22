@@ -72,6 +72,11 @@ type (
 		GetDebug() bool
 		// Get the user information from the server.
 		GetUser() (user *entity.User, err error)
+
+		GetDocument(uuid.UUID) (*entity.Array, error)
+
+		GetDownloadURL(id uuid.UUID, signed bool) (string, error)
+		GetHtml(id uuid.UUID, signed bool) ([]byte, error)
 	}
 	// Setter interface.
 	setter interface {
@@ -81,21 +86,54 @@ type (
 		SetCredentials(username, password string) Fatura
 		// Update the user information on the server.
 		UpdateUser(user *entity.User) (err error)
+		// Set the document type.
+		SetDocumentType(document.Type) Fatura
+
+		CreateDraft() error
+		DeleteDraft(document document.Type, reasons string) error
 	}
-	bearer struct {
-		uuid       uuid.UUID
-		sortByDesc bool
-		rowCount   int
-		column     []string
-		filters    []string
-		limit      []int
-		document   document.Type
-		debug      bool
-		username   string
-		password   string
-		token      string
+	lister interface {
+		CancellationRequest() string
+		ObjectionRequest() string
+		GetRequests(start, end string) []string
+		GetAll(start, end string)
+		GetAllIssuedToMe(start, end, hourlySearch string)
+		FilterDocuments(document.Type)
+		SelectColumn(column, key string) string
+		mapColumn(data []string) entity.Array
+		SetFilters(filters []string) lister
+		SetLimit(limit, offset int) lister
+		SortAsc() lister
+		SortDesc() lister
+		SetRowCount(int) lister
+		RowCount() int
+		OnlySigned() lister
+		OnlyUnsigned() lister
+		OnlyDeleted() lister
+		OnlyCurrent() lister
+		OnlyInvoice() lister
+		OnlyProducerReceipt() lister
+		OnlySelfEmployedReceipt() lister
+		FindRecipientName(string) lister
+		FindRecipientId(string) lister
+		FindEttn(string) lister
+		FindDocumentId(string) lister
 	}
 )
+
+type bearer struct {
+	uuid       uuid.UUID
+	sortByDesc bool
+	rowCount   int
+	column     []string
+	filters    []string
+	limit      []int
+	document   document.Type
+	debug      bool
+	username   string
+	password   string
+	token      string
+}
 
 // Returns a new Fatura instance.
 func New() Fatura {
@@ -343,6 +381,7 @@ func (b *bearer) StartSmsVerification(phone string) (string, error) {
 	return result.Data.Oid, nil
 }
 
+// Ends the sms verification process.
 func (b *bearer) EndSmsVerification(oid, code string, uuids []string) error {
 	params := map[string]interface{}{
 		"DATA":  uuids,
@@ -397,4 +436,60 @@ func (b *bearer) EndSmsVerification(oid, code string, uuids []string) error {
 	}
 
 	return nil
+}
+
+func (b *bearer) CreateDraft() error {
+	return errors.New("not implemented")
+}
+
+func (b *bearer) DeleteDraft(document document.Type, reasons string) error {
+	return errors.New("not implemented")
+}
+
+// Set the document type.
+func (b *bearer) SetDocumentType(document document.Type) Fatura {
+	b.document = document
+	return b
+}
+
+// Get the list of invoices.
+func (b *bearer) GetDocument(id uuid.UUID) (*entity.Array, error) {
+	params := url.Values{}
+	switch b.document {
+	case document.Invoice:
+		params.Add("cmd", "EARSIV_PORTAL_FATURA_GETIR")
+		params.Add("pageName", "RG_TASLAKLAR")
+	case document.ProducerReceipt:
+		params.Add("cmd", "EARSIV_PORTAL_MUSTAHSIL_GETIR")
+		params.Add("pageName", "RG_MUSTAHSIL")
+	case document.SelfEmployedReceipt:
+		params.Add("cmd", "EARSIV_PORTAL_SERBEST_MESLEK_GETIR")
+		params.Add("pageName", "RG_SERBEST")
+	}
+	params.Add("ettn", id.String())
+
+	res, err := client.PostForm(b.gateway(DISPATCH), params)
+	if err != nil {
+		return nil, errors.New("Error while sending request: " + err.Error())
+	}
+	jsonData, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, errors.New("Error while reading response: " + err.Error())
+	}
+	var result = &entity.Array{}
+	err = json.Unmarshal(jsonData, &result)
+	if err != nil {
+		return nil, errors.New("Error while parsing response: " + err.Error())
+	}
+	return result, nil
+}
+
+// Get the download url of the document.
+func (b *bearer) GetDownloadURL(id uuid.UUID, signed bool) (string, error) {
+	return "", errors.New("not implemented")
+}
+
+// Get the html of the document.
+func (b *bearer) GetHtml(id uuid.UUID, signed bool) ([]byte, error) {
+	return nil, errors.New("not implemented")
 }
