@@ -34,6 +34,14 @@ const (
 // HTTP client.
 var client *http.Client = &http.Client{}
 
+type ApiError struct {
+	Error    bool `json:"error"`
+	Messages []struct {
+		Type int64  `json:"type"`
+		Text string `json:"text"`
+	} `json:"messages"`
+}
+
 type (
 	// Fatura interface.
 	Fatura interface {
@@ -43,6 +51,10 @@ type (
 		Logout() error
 		// Gateway returns the gateway url.
 		gateway(path Path) string
+		// Get oid sms verification, step 1.
+		StartSmsVerification(phone string) (string, error)
+		// Get oid sms verification, step 2.
+		EndSmsVerification(oid, code string, invocies []string) error
 		// Extends the getter interface.
 		getter
 		// Extends the setter interface.
@@ -66,8 +78,8 @@ type (
 		// Set the debug mode.
 		SetDebug(bool) Fatura
 		// Set the username and password.
-		SetCridetials(username, password string) Fatura
-
+		SetCredentials(username, password string) Fatura
+		// Update the user information on the server.
 		UpdateUser(user *entity.User) (err error)
 	}
 	bearer struct {
@@ -124,7 +136,7 @@ func (b *bearer) GetDebug() bool {
 }
 
 // Set the username and password.
-func (b *bearer) SetCridetials(username, password string) Fatura {
+func (b *bearer) SetCredentials(username, password string) Fatura {
 	b.username = username
 	b.password = password
 	return b
@@ -229,7 +241,6 @@ func (b *bearer) Logout() error {
 	b.password = ""
 	b.token = ""
 	return nil
-
 }
 
 // Get the user information from the server.
@@ -255,6 +266,7 @@ func (b *bearer) GetUser() (user *entity.User, err error) {
 	if err != nil {
 		return nil, errors.New("Error while parsing response: " + err.Error())
 	}
+
 	return &result.Data, nil
 }
 
@@ -281,5 +293,108 @@ func (b *bearer) UpdateUser(user *entity.User) error {
 	if err != nil {
 		return errors.New("Error while parsing response: " + err.Error())
 	}
+	return nil
+}
+
+// Starts the sms verification process.
+func (b *bearer) StartSmsVerification(phone string) (string, error) {
+	var err error
+	var jp struct {
+		CEPTEL  string `json:"CEPTEL"`
+		KCEPTEL string `json:"KCEPTEL"`
+		TIP     string `json:"TIP"`
+	}
+	jp.CEPTEL = phone
+	jp.KCEPTEL = ""
+	jp.TIP = "1"
+
+	jsonData, err := json.Marshal(jp)
+	if err != nil {
+		return "", errors.New("Error while parsing data: " + err.Error())
+	}
+	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
+		"callid":   []string{uuid.NewString()},
+		"token":    []string{b.token},
+		"cmd":      []string{"EARSIV_PORTAL_SMSSIFRE_GONDER"},
+		"pageName": []string{"RG_SMSONAY"},
+		"jp":       []string{string(jsonData)},
+	})
+	if err != nil {
+		return "", errors.New("Error while sending request: " + err.Error())
+	}
+	jsonData, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", errors.New("Error while reading response: " + err.Error())
+	}
+
+	var result struct {
+		Data struct {
+			Oid string `json:"oid"`
+		} `json:"data"`
+	}
+	err = json.Unmarshal(jsonData, &result)
+	if err != nil {
+		return "", errors.New("Error while parsing response: " + err.Error())
+	}
+
+	if result.Data.Oid == "" {
+		return "", errors.New("oid is empty")
+	}
+	return result.Data.Oid, nil
+}
+
+func (b *bearer) EndSmsVerification(oid, code string, uuids []string) error {
+	params := map[string]interface{}{
+		"DATA":  uuids,
+		"SIFRE": code,
+		"OID":   oid,
+		"OPR":   1,
+	}
+
+	_json, err := json.Marshal(params)
+	if err != nil {
+		return errors.New("Error while parsing data: " + err.Error())
+	}
+	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
+		"callid":   []string{uuid.NewString()},
+		"token":    []string{b.token},
+		"cmd":      []string{"0lhozfib5410mp"},
+		"pageName": []string{"RG_SMSONAY"},
+		"jp":       []string{string(_json)},
+	})
+	if err != nil {
+		return errors.New("Error while sending request: " + err.Error())
+	}
+	_data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.New("Error while reading response: " + err.Error())
+	}
+
+	var _err ApiError = ApiError{}
+	err = json.Unmarshal(_data, &_err)
+	if err != nil {
+		return errors.New("Error while parsing response: " + err.Error())
+	}
+	for _, e := range _err.Messages {
+		return errors.New(e.Text)
+	}
+
+	var result struct {
+		Data struct {
+			Sonuc string `json:"sonuc"`
+		} `json:"data"`
+	}
+	err = json.Unmarshal(_data, &result)
+	if err != nil {
+		return errors.New("Error while parsing response: " + err.Error())
+	}
+
+	if result.Data.Sonuc != "1" {
+		return errors.New("error while verifying sms code")
+	}
+	for i := range uuids {
+		b.rowCount = i + 1
+	}
+
 	return nil
 }

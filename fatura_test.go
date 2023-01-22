@@ -24,8 +24,8 @@ func TestGetDebug(t *testing.T) {
 	}
 }
 
-func TestSetCridetials(t *testing.T) {
-	f := fatura_new.SetCridetials("username", "password")
+func TestSetCredentials(t *testing.T) {
+	f := fatura_new.SetCredentials("username", "password")
 
 	username, password := f.GetCridetials()
 	assert.Equal(t, "username", username)
@@ -33,7 +33,7 @@ func TestSetCridetials(t *testing.T) {
 }
 
 func TestGetCridetials(t *testing.T) {
-	f := fatura_new.SetCridetials("username", "password")
+	f := fatura_new.SetCredentials("username", "password")
 	username, password := f.GetCridetials()
 	assert.Equal(t, "username", username)
 	assert.Equal(t, "password", password)
@@ -53,7 +53,7 @@ func TestLogin(t *testing.T) {
 		t.Error("GetTestCredentials() failed")
 	}
 
-	f := fatura_new.SetCridetials(username, password)
+	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
 	err = f.Login()
 	if err != nil {
@@ -67,7 +67,7 @@ func TestLogout(t *testing.T) {
 		t.Error("GetTestCredentials() failed")
 	}
 
-	f := fatura_new.SetCridetials(username, password)
+	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
 	err = f.Login()
 	if err != nil {
@@ -86,7 +86,7 @@ func TestGetUser(t *testing.T) {
 		t.Error("GetTestCredentials() failed")
 	}
 
-	f := fatura_new.SetCridetials(username, password)
+	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
 	err = f.Login()
 	if err != nil {
@@ -106,7 +106,7 @@ func TestUpdateUser(t *testing.T) {
 		t.Error("GetTestCredentials() failed")
 	}
 
-	f := fatura_new.SetCridetials(username, password)
+	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
 	err = f.Login()
 	if err != nil {
