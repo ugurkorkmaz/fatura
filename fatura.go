@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fatura/entity"
 	"fatura/entity/enum/document"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -33,7 +34,6 @@ const (
 // HTTP client.
 var client *http.Client = &http.Client{}
 
-// Fatura instance.
 type (
 	// Fatura interface.
 	Fatura interface {
@@ -67,8 +67,10 @@ type (
 		SetDebug(bool) Fatura
 		// Set the username and password.
 		SetCridetials(username, password string) Fatura
+
+		UpdateUser(user *entity.User) (err error)
 	}
-	fatura struct {
+	bearer struct {
 		uuid       uuid.UUID
 		sortByDesc bool
 		rowCount   int
@@ -85,7 +87,7 @@ type (
 
 // Returns a new Fatura instance.
 func New() Fatura {
-	return &fatura{
+	return &bearer{
 		uuid:       uuid.New(),
 		sortByDesc: false,
 		rowCount:   100,
@@ -97,37 +99,45 @@ func New() Fatura {
 	}
 }
 
+// Gateway returns the gateway url.
+func (b *bearer) gateway(path Path) string {
+	if b.debug {
+		return string(TEST) + string(path)
+	}
+	return string(BASE) + string(path)
+}
+
 // Get the token from the server.
-func (f *fatura) GetToken() string {
-	return f.token
+func (b *bearer) GetToken() string {
+	return b.token
 }
 
 // Set the debug mode.
-func (f *fatura) SetDebug(debug bool) Fatura {
-	f.debug = debug
-	return f
+func (b *bearer) SetDebug(debug bool) Fatura {
+	b.debug = debug
+	return b
 }
 
 // Get the debug mode.
-func (f *fatura) GetDebug() bool {
-	return f.debug
+func (b *bearer) GetDebug() bool {
+	return b.debug
 }
 
 // Set the username and password.
-func (f *fatura) SetCridetials(username, password string) Fatura {
-	f.username = username
-	f.password = password
-	return f
+func (b *bearer) SetCridetials(username, password string) Fatura {
+	b.username = username
+	b.password = password
+	return b
 }
 
 // Get the username and password.
-func (f *fatura) GetCridetials() (username, password string) {
-	return f.username, f.password
+func (b *bearer) GetCridetials() (username, password string) {
+	return b.username, b.password
 }
 
 // Get the test credentials from the server.
-func (f *fatura) GetTestCredentials() (username, password string, err error) {
-	res, err := client.PostForm(f.gateway(ESIGN), url.Values{
+func (b *bearer) GetTestCredentials() (username, password string, err error) {
+	res, err := client.PostForm(b.gateway(ESIGN), url.Values{
 		"assoscmd": []string{"kullaniciOner"},
 		"rtype":    []string{"json"},
 	})
@@ -153,20 +163,20 @@ func (f *fatura) GetTestCredentials() (username, password string, err error) {
 }
 
 // Login to the server.
-func (f *fatura) Login() error {
-	if f.username == "" || f.password == "" {
+func (b *bearer) Login() error {
+	if b.username == "" || b.password == "" {
 		return errors.New("username or password is empty")
 	}
 	assoscmd := []string{"anologin"}
-	if f.debug {
+	if b.debug {
 		assoscmd = []string{"login"}
 	}
-	res, err := client.PostForm(f.gateway(LOGIN), url.Values{
+	res, err := client.PostForm(b.gateway(LOGIN), url.Values{
 		"assoscmd": assoscmd,
-		"userid":   []string{f.username},
-		"sifre":    []string{f.password},
-		"sifre2":   []string{f.password},
-		"parola":   []string{f.password},
+		"userid":   []string{b.username},
+		"sifre":    []string{b.password},
+		"sifre2":   []string{b.password},
+		"parola":   []string{b.password},
 	})
 	if err != nil {
 		return errors.New("Error while sending request: " + err.Error())
@@ -184,20 +194,22 @@ func (f *fatura) Login() error {
 	}
 
 	if data["token"] == nil {
-		return errors.New("all credentials are wrong")
+		fmt.Println(b.token)
+		fmt.Println(string(jsonData))
+		return errors.New("token is nil")
 	}
-	f.token = data["token"].(string)
+	b.token = data["token"].(string)
 	return nil
 }
 
 // Logout from the server.
-func (f *fatura) Logout() error {
-	if f.token == "" {
+func (b *bearer) Logout() error {
+	if b.token == "" {
 		return errors.New("token is empty")
 	}
-	res, err := client.PostForm(f.gateway(LOGIN), url.Values{
+	res, err := client.PostForm(b.gateway(LOGIN), url.Values{
 		"assoscmd": []string{"logout"},
-		"token":    []string{f.token},
+		"token":    []string{b.token},
 	})
 	if err != nil {
 		return errors.New("Error while sending request: " + err.Error())
@@ -213,18 +225,18 @@ func (f *fatura) Logout() error {
 	if err != nil {
 		return errors.New("Error while parsing response: " + err.Error())
 	}
-	f.username = ""
-	f.password = ""
-	f.token = ""
+	b.username = ""
+	b.password = ""
+	b.token = ""
 	return nil
 
 }
 
 // Get the user information from the server.
-func (f *fatura) GetUser() (user *entity.User, err error) {
-	res, err := client.PostForm(f.gateway(DISPATCH), url.Values{
-		"callid":   []string{f.uuid.String()},
-		"token":    []string{f.token},
+func (b *bearer) GetUser() (user *entity.User, err error) {
+	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
+		"callid":   []string{b.uuid.String()},
+		"token":    []string{b.token},
 		"cmd":      []string{"EARSIV_PORTAL_KULLANICI_BILGILERI_GETIR"},
 		"pageName": []string{"RG_KULLANICI"},
 		"jp":       []string{""},
@@ -246,9 +258,28 @@ func (f *fatura) GetUser() (user *entity.User, err error) {
 	return &result.Data, nil
 }
 
-func (f *fatura) gateway(path Path) string {
-	if f.debug {
-		return string(TEST) + string(path)
+// Update the user information on the server.
+func (b *bearer) UpdateUser(user *entity.User) error {
+	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
+		"callid":   []string{b.uuid.String()},
+		"token":    []string{b.token},
+		"cmd":      []string{"EARSIV_PORTAL_KULLANICI_BILGILERI_GETIR"},
+		"pageName": []string{"RG_KULLANICI"},
+		"jp":       []string{""},
+	})
+	if err != nil {
+		return errors.New("Error while sending request: " + err.Error())
 	}
-	return string(BASE) + string(path)
+	jsonData, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.New("Error while reading response: " + err.Error())
+	}
+	var result struct {
+		Data entity.User `json:"data"`
+	}
+	err = json.Unmarshal(jsonData, &result)
+	if err != nil {
+		return errors.New("Error while parsing response: " + err.Error())
+	}
+	return nil
 }
