@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -41,8 +42,8 @@ type ApiError struct {
 		Text string `json:"text"`
 	} `json:"messages"`
 }
-
 type (
+	Models interface{ entity.Invoice | entity.User }
 	// Fatura interface.
 	Fatura interface {
 		// Login to the server.
@@ -55,10 +56,17 @@ type (
 		StartSmsVerification(phone string) (string, error)
 		// Get oid sms verification, step 2.
 		EndSmsVerification(oid, code string, invocies []string) error
-		// Create a new draft.
-		CreateDraft() error
+		// Creates a draft.
+		// The model parameter can be one of the following:
+		//
+		// * entity.Invoice
+		//
+		// * entity.ProducerReceipt
+		//
+		// * entity.SelfEmployedReceipt
+		CreateDraft(entity any) error
 		// Delete a draft.
-		DeleteDraft(document document.Type, reasons string) error
+		DeleteDraft(document []string, reasons string) error
 		// Extends the getter interface.
 		getter
 		// Extends the setter interface.
@@ -104,7 +112,7 @@ type (
 		GetAllIssuedToMe(start, end, hourlySearch string)
 		FilterDocuments(document.Type)
 		SelectColumn(column, key string) string
-		mapColumn(data []string) entity.Array
+		MapColumn(data []string) entity.Array
 		SetFilters(filters []string) lister
 		SetLimit(limit, offset int) lister
 		SortAsc() lister
@@ -442,12 +450,95 @@ func (b *bearer) EndSmsVerification(oid, code string, uuids []string) error {
 	return nil
 }
 
-func (b *bearer) CreateDraft() error {
-	return errors.New("not implemented")
+// Creates a draft.
+// The model parameter can be one of the following:
+//
+// * entity.Invoice
+//
+// * entity.ProducerReceipt
+//
+// * entity.SelfEmployedReceipt
+func (b *bearer) CreateDraft(model any) error {
+	var form url.Values
+
+	switch model := model.(type) {
+	case *entity.Invoice:
+		form.Add("jp", model.Json())
+		form.Add("cmd", "EARSIV_PORTAL_FATURA_OLUSTUR")
+		form.Add("pageName", "RG_BASITFATURA")
+	case *entity.ProducerReceipt:
+		form.Add("jp", model.Json())
+		form.Add("cmd", "EARSIV_PORTAL_MUSTAHSIL_OLUSTUR")
+		form.Add("pageName", "RG_MUSTAHSIL")
+	case *entity.SelfEmployedReceipt:
+		form.Add("jp", model.Json())
+		form.Add("cmd", "EARSIV_PORTAL_SERBEST_MESLEK_MAKBUZU_OLUSTUR")
+		form.Add("pageName", "RG_SERBEST")
+	default:
+		return errors.New("invalid model")
+	}
+
+	res, err := client.PostForm(b.gateway(DISPATCH), form)
+	if err != nil {
+		return errors.New("Error while sending request: " + err.Error())
+	}
+	jsonData, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.New("Error while reading response: " + err.Error())
+	}
+
+	var result ApiError = ApiError{}
+	err = json.Unmarshal(jsonData, &result)
+	if err != nil {
+		return errors.New("Error while parsing response: " + err.Error())
+	}
+	if len(result.Messages) > 0 {
+		for _, e := range result.Messages {
+			return errors.New(e.Text)
+		}
+	}
+	if !strings.Contains(string(jsonData), "başarıyla") {
+		return errors.New("error while creating draft")
+	}
+	return nil
 }
 
-func (b *bearer) DeleteDraft(document document.Type, reasons string) error {
-	return errors.New("not implemented")
+func (b *bearer) DeleteDraft(uuids []string, reasons string) error {
+	var jp []map[string]interface{}
+	for _, uuid := range uuids {
+		jp = append(jp, map[string]interface{}{
+			"belgeTuru": b.document.String(),
+			"ettn":      uuid,
+		})
+	}
+	_json, err := json.Marshal(jp)
+	if err != nil {
+		return errors.New("Error while parsing data: " + err.Error())
+	}
+	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
+		"token":    []string{b.token},
+		"cmd":      []string{"EARSIV_PORTAL_FATURA_SIL"},
+		"pageName": []string{"RG_TASLAKLAR"},
+		"jp":       []string{string(_json)},
+	})
+	if err != nil {
+		return errors.New("Error while sending request: " + err.Error())
+	}
+	_data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.New("Error while reading response: " + err.Error())
+	}
+
+	var _err ApiError = ApiError{}
+	err = json.Unmarshal(_data, &_err)
+	if err != nil {
+		return errors.New("Error while parsing response: " + err.Error())
+	}
+	for _, e := range _err.Messages {
+		return errors.New(e.Text)
+	}
+
+	return nil
 }
 
 // Set the document type.
@@ -534,7 +625,7 @@ func (b *bearer) SelectColumn(column, key string) string {
 }
 
 // TODO
-func (b *bearer) mapColumn(data []string) entity.Array {
+func (b *bearer) MapColumn(data []string) entity.Array {
 	panic("not implemented")
 }
 
@@ -548,24 +639,27 @@ func (b *bearer) SetLimit(limit, offset int) lister {
 	panic("not implemented")
 }
 
-// TODO
+// Sort the list in ascending order.
 func (b *bearer) SortAsc() lister {
-	panic("not implemented")
+	b.sortByDesc = false
+	return b
 }
 
-// TODO
+// Sort the list in descending order.
 func (b *bearer) SortDesc() lister {
-	panic("not implemented")
+	b.sortByDesc = true
+	return b
 }
 
-// TODO
-func (b *bearer) SetRowCount(int) lister {
-	panic("not implemented")
+// Set the row count.
+func (b *bearer) SetRowCount(count int) lister {
+	b.rowCount = count
+	return b
 }
 
-// TODO
+// Get the row count.
 func (b *bearer) RowCount() int {
-	panic("not implemented")
+	return b.rowCount
 }
 
 // TODO
