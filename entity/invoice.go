@@ -5,13 +5,14 @@ import (
 	"fatura/entity/enum/arsiv"
 	"fatura/entity/enum/currency"
 	"fatura/entity/enum/invoice"
+
+	"github.com/google/uuid"
 )
 
 type Array map[string]interface{}
 
 type Invoice struct {
-	trait `json:"-"`
-
+	Ettn                     uuid.UUID         `json:"ettn"`
 	VknTckn                  string            `json:"vknTckn"`
 	AliciAdi                 string            `json:"aliciAdi"`
 	AliciSoyadi              string            `json:"aliciSoyadi"`

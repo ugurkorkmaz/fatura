@@ -3,10 +3,10 @@ package entity
 import "fatura/entity/enum/unit"
 
 type ProducerItem struct {
-	MalHizmet       string
-	Miktar          float64
-	Birim           unit.Type
-	BirimFiyat      float64
-	MalHizmetTutari float64
-	GvStopajOrani   int
+	MalHizmet       string    `json:"malHizmet"`
+	Miktar          float64   `json:"miktar"`
+	Birim           unit.Type `json:"birim"`
+	BirimFiyat      float64   `json:"birimFiyat"`
+	MalHizmetTutari float64   `json:"malHizmetTutari"`
+	GvStopajOrani   int       `json:"gvStopajOrani"`
 }

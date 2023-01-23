@@ -12,7 +12,7 @@ type InvoiceItem struct {
 	BirimFiyat       float64   `json:"birimFiyat"`
 	KdvOrani         int       `json:"kdvOrani"`
 	Fiyat            float64   `json:"fiyat"`
-	IskontoTipi      bool      `json:"iskontoTipi"`
+	IskontoTipi      bool      `json:"iskontoArttm"`
 	IskontoOrani     float64   `json:"iskontoOrani"`
 	IskontoTutari    float64   `json:"iskontoTutari"`
 	IskontoNedeni    string    `json:"iskontoNedeni"`
@@ -22,10 +22,6 @@ type InvoiceItem struct {
 	OzelMatrahNedeni int       `json:"ozelMatrahNedeni"`
 	OzelMatrahTutari float64   `json:"ozelMatrahTutari"`
 	Gtip             string    `json:"gtip"`
-
-	// ignore
-	checked bool    `json:"-"`
-	errors  []error `json:"-"`
 }
 
 func (i *InvoiceItem) New() *InvoiceItem {
@@ -44,17 +40,14 @@ func (i *InvoiceItem) New() *InvoiceItem {
 	}
 }
 
+// TODO
 func (i *InvoiceItem) Default() {
-	i.checked = false
+	panic("implement me")
 }
 
+// TODO
 func (i *InvoiceItem) Validate() bool {
-	for _, err := range i.errors {
-		if err != nil {
-			return false
-		}
-	}
-	return true
+	panic("implement me")
 }
 
 func (i *InvoiceItem) Json() string {

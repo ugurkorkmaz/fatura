@@ -1,10 +1,13 @@
 package entity
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 type ProducerReceipt struct {
-	trait `json:"-"`
-
+	Ettn                     uuid.UUID    `json:"ettn"`
 	VknTckn                  string       `json:"vknTckn"`
 	AliciAdi                 string       `json:"aliciAdi"`
 	AliciSoyadi              string       `json:"aliciSoyadi"`

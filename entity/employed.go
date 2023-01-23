@@ -3,6 +3,8 @@ package entity
 import (
 	"encoding/json"
 	"fatura/entity/enum/currency"
+
+	"github.com/google/uuid"
 )
 
 type SelfEmployedReceipt struct {
@@ -10,7 +12,7 @@ type SelfEmployedReceipt struct {
 	AliciAdi          string           `json:"aliciAdi"`
 	AliciSoyadi       string           `json:"aliciSoyadi"`
 	Ulke              string           `json:"ulke"`
-	Uuid              string           `json:"ettn"`
+	Ettn              uuid.UUID        `json:"ettn"`
 	BelgeNumarasi     string           `json:"belgeNumarasi"`
 	Tarih             string           `json:"tarih"`
 	Saat              string           `json:"saat"`
