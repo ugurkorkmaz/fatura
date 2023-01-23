@@ -10,6 +10,17 @@ import (
 
 var fatura_new = fatura.New()
 
+var username, password string
+
+func init() {
+	var err error
+	username, password, err = fatura_new.GetTestCredentials()
+	if err != nil {
+		panic(err)
+	}
+	fatura_new.SetDebug(true)
+}
+
 func TestSetDebug(t *testing.T) {
 	fatura_new.SetDebug(true)
 	if !fatura_new.GetDebug() {
@@ -48,28 +59,18 @@ func TestGetTestCredentials(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	username, password, err := fatura_new.GetTestCredentials()
-	if err != nil {
-		t.Error("GetTestCredentials() failed")
-	}
-
 	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
-	err = f.Login()
+	err := f.Login()
 	if err != nil {
 		t.Error("Login() failed")
 	}
 }
 
 func TestLogout(t *testing.T) {
-	username, password, err := fatura_new.GetTestCredentials()
-	if err != nil {
-		t.Error("GetTestCredentials() failed")
-	}
-
 	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
-	err = f.Login()
+	err := f.Login()
 	if err != nil {
 		t.Error("Login() failed")
 	}
@@ -81,14 +82,9 @@ func TestLogout(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	username, password, err := fatura_new.GetTestCredentials()
-	if err != nil {
-		t.Error("GetTestCredentials() failed")
-	}
-
 	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
-	err = f.Login()
+	err := f.Login()
 	if err != nil {
 		t.Error("Login() failed")
 	}
@@ -101,14 +97,9 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
-	username, password, err := fatura_new.GetTestCredentials()
-	if err != nil {
-		t.Error("GetTestCredentials() failed")
-	}
-
 	f := fatura_new.SetCredentials(username, password)
 	f.SetDebug(true)
-	err = f.Login()
+	err := f.Login()
 	if err != nil {
 		t.Error("Login() failed")
 	}
