@@ -1,0 +1,32 @@
+package entity
+
+import "encoding/json"
+
+type ProducerReceipt struct {
+	trait `json:"-"`
+
+	VknTckn                  string       `json:"vknTckn"`
+	AliciAdi                 string       `json:"aliciAdi"`
+	AliciSoyadi              string       `json:"aliciSoyadi"`
+	BelgeNumarasi            string       `json:"belgeNumarasi"`
+	Tarih                    string       `json:"tarih"`
+	Saat                     string       `json:"saat"`
+	Sehir                    string       `json:"sehir"`
+	Websitesi                string       `json:"websitesi"`
+	MalHizmetTable           ProducerItem `json:"malHizmetTable"`
+	Not                      string       `json:"not"`
+	TeslimTarihi             string       `json:"teslimTarihi"`
+	MalHizmetToplamTutari    float64      `json:"malHizmetToplamTutari"`
+	VergilerDahilToplamTutar float64      `json:"vergilerDahilToplamTutar"`
+	OdenecekTutar            float64      `json:"odenecekTutar"`
+}
+
+func (p *ProducerReceipt) Type() string {
+	return "MÜSTAHSİL MAKBUZU"
+}
+func (p *ProducerReceipt) Json() string {
+	b, _ := json.Marshal(p)
+	return string(b)
+}
+
+func (p *ProducerReceipt) AddItem(item ProducerItem) {}

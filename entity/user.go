@@ -3,6 +3,8 @@ package entity
 import "encoding/json"
 
 type User struct {
+	trait `json:"-"`
+
 	VknTckn         string `json:"vknTckn"`
 	Unvan           string `json:"unvan"`
 	Ad              string `json:"ad"`
