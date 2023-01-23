@@ -59,6 +59,10 @@ type Invoice struct {
 	OdenecekTutar            float64       `json:"odenecekTutar"`
 }
 
+func (i *Invoice) Type() string {
+	return "FATURA"
+}
+
 func (i *Invoice) Default() {}
 
 func (i *Invoice) Validate() bool {

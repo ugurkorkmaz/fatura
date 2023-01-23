@@ -86,8 +86,6 @@ type (
 		GetDebug() bool
 		// Get the user information from the server.
 		GetUser() (user *entity.User, err error)
-		// Get the document type.
-		GetDocument(uuid.UUID) (*entity.Array, error)
 		// Get the document download url.
 		GetDownloadURL(id uuid.UUID, signed bool) (string, error)
 		// Get the document html content.
@@ -101,8 +99,6 @@ type (
 		SetCredentials(username, password string) Fatura
 		// Update the user information on the server.
 		UpdateUser(user *entity.User) (err error)
-		// Set the document type.
-		SetDocumentType(document.Type) Fatura
 	}
 	lister interface {
 		CancellationRequest() string
