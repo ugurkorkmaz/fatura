@@ -101,7 +101,7 @@ type (
 		UpdateUser(user *entity.User) (err error)
 	}
 	lister interface {
-		CancellationRequest() string
+		CancellationRequest(uuid.UUID, string) string
 		ObjectionRequest() string
 		GetRequests(start, end string) []string
 		GetAll(start, end string)
@@ -577,7 +577,25 @@ func (b *bearer) GetDocument(id uuid.UUID) (*entity.Array, error) {
 
 // Get the download url of the document.
 func (b *bearer) GetDownloadURL(id uuid.UUID, signed bool) (string, error) {
-	return "", errors.New("not implemented")
+	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
+		"token":    []string{b.token},
+		"ettn":     []string{id.String()},
+		"cmd":      []string{"EARSIV_PORTAL_FATURA_GOSTER"},
+		"pageName": []string{"RG_TASLAKLAR"},
+		"onayDurumu": func() []string {
+			if signed {
+				return []string{"Onaylandı"}
+			}
+			return []string{"Onaylanmadı"}
+		}(),
+	})
+
+	if err != nil {
+		return "", errors.New("Error while sending request: " + err.Error())
+	}
+	jsonData, err := ioutil.ReadAll(res.Body)
+	return string(jsonData), nil
+
 }
 
 // Get the html of the document.
@@ -586,8 +604,20 @@ func (b *bearer) GetHtml(id uuid.UUID, signed bool) ([]byte, error) {
 }
 
 // TODO
-func (b *bearer) CancellationRequest() string {
-	panic("not implemented")
+func (b *bearer) CancellationRequest(id uuid.UUID, explanation string) string {
+	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
+		"token":         []string{b.token},
+		"ettn":          []string{id.String()},
+		"cmd":           []string{"EARSIV_PORTAL_IPTAL_TALEBI_OLUSTUR"},
+		"pageName":      []string{"RG_TASLAKLAR"},
+		"belgeTuru":     []string{b.document.String()},
+		"talepAciklama": []string{explanation},
+	})
+	if err != nil {
+		return ""
+	}
+	jsonData, err := ioutil.ReadAll(res.Body)
+	return string(jsonData)
 }
 
 // TODO
