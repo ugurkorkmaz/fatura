@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fatura/entity"
 	"fatura/entity/enum/document"
+	"fatura/types"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -176,10 +177,6 @@ type (
 		*/
 		MapColumn(data []string) entity.Array
 		/*
-			Set the filters.
-		*/
-		SetFilters(filters []string) lister
-		/*
 			Set the limit.
 		*/
 		SetLimit(limit, offset int) lister
@@ -251,8 +248,8 @@ type bearer struct {
 	uuid       uuid.UUID
 	sortByDesc bool
 	rowCount   int
-	column     []string
-	filters    []string
+	column     types.Array
+	filters    types.Array
 	limit      []int
 	document   document.Type
 	debug      bool
@@ -267,8 +264,8 @@ func New() Fatura {
 		uuid:       uuid.New(),
 		sortByDesc: false,
 		rowCount:   100,
-		column:     []string{"id", "uuid", "type", "status", "date", "amount"},
-		filters:    []string{},
+		column:     types.Array{},
+		filters:    types.Array{},
 		limit:      []int{0, 100},
 		document:   document.Invoice,
 		debug:      false,
@@ -281,6 +278,17 @@ func (b *bearer) gateway(path Path) string {
 		return string(TEST) + string(path)
 	}
 	return string(BASE) + string(path)
+}
+
+// Set parameters.
+func (b *bearer) params(cmd, pagename string, data types.Array) url.Values {
+	p := url.Values{}
+	p.Add("callid", uuid.NewString())
+	p.Add("token", b.token)
+	p.Add("cmd", cmd)
+	p.Add("pageName", pagename)
+	p.Add("jp", data.Json())
+	return p
 }
 
 // Get the token from the server.
@@ -416,6 +424,7 @@ func (b *bearer) GetUser() (user *entity.User, err error) {
 		"pageName": []string{"RG_KULLANICI"},
 		"jp":       []string{""},
 	})
+
 	if err != nil {
 		return nil, errors.New("Error while sending request: " + err.Error())
 	}
@@ -767,7 +776,8 @@ func (b *bearer) FilterDocuments(document.Type) {
 
 // TODO
 func (b *bearer) SelectColumn(column, key string) string {
-	panic("not implemented")
+	b.column.Add(column, key)
+	return ""
 }
 
 // TODO
@@ -776,13 +786,9 @@ func (b *bearer) MapColumn(data []string) entity.Array {
 }
 
 // TODO
-func (b *bearer) SetFilters(filters []string) lister {
-	panic("not implemented")
-}
-
-// TODO
 func (b *bearer) SetLimit(limit, offset int) lister {
-	panic("not implemented")
+	b.limit = []int{limit, offset}
+	return b
 }
 
 // Sort the list in ascending order.
@@ -810,55 +816,66 @@ func (b *bearer) RowCount() int {
 
 // TODO
 func (b *bearer) OnlySigned() lister {
-	panic("not implemented")
+	b.filters.Add("onayDurumu", "Onaylandı")
+	return b
 }
 
 // TODO
 func (b *bearer) OnlyUnsigned() lister {
-	panic("not implemented")
+	b.filters.Add("onayDurumu", "Onaylanmadı")
+	return b
 }
 
 // TODO
 func (b *bearer) OnlyDeleted() lister {
-	panic("not implemented")
+	b.filters.Add("onayDurumu", "Silinmiş")
+	return b
 }
 
 // TODO
 func (b *bearer) OnlyCurrent() lister {
-	panic("not implemented")
+	b.filters.Add("belgeTuru", b.document.String())
+	return b
 }
 
 // TODO
 func (b *bearer) OnlyInvoice() lister {
-	panic("not implemented")
+	b.filters.Add("belgeTuru", document.Invoice.String())
+	return b
 }
 
 // TODO
 func (b *bearer) OnlyProducerReceipt() lister {
-	panic("not implemented")
+	b.filters.Add("belgeTuru", document.ProducerReceipt.String())
+	return b
 }
 
 // TODO
 func (b *bearer) OnlySelfEmployedReceipt() lister {
-	panic("not implemented")
+	b.filters.Add("belgeTuru", document.SelfEmployedReceipt.String())
+	return b
 }
 
 // TODO
-func (b *bearer) FindRecipientName(string) lister {
-	panic("not implemented")
+func (b *bearer) FindRecipientName(value string) lister {
+	b.filters.Add("aliciUnvanAdSoyad", value)
+	return b
 }
 
 // TODO
-func (b *bearer) FindRecipientId(string) lister {
-	panic("not implemented")
+func (b *bearer) FindRecipientId(value string) lister {
+	b.filters.Add("aliciVknTckn", value)
+	return b
 }
 
 // TODO
-func (b *bearer) FindEttn(string) lister {
-	panic("not implemented")
+func (b *bearer) FindEttn(value string) lister {
+	b.filters.Add("ettn", value)
+	return b
 }
 
 // TODO
-func (b *bearer) FindDocumentId(string) lister {
-	panic("not implemented")
+func (b *bearer) FindDocumentId(value string) lister {
+	b.filters.Add("belgeNumarasi", value)
+	return b
 }
