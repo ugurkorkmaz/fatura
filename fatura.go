@@ -50,14 +50,19 @@ type (
 	Fatura interface {
 		// Login to the server.
 		Login() error
+
 		// Logout from the server.
 		Logout() error
+
 		// Gateway returns regular url.
 		gateway(path Path) string
+
 		// Get oid sms verification, step 1.
 		StartSmsVerification(phone string) (string, error)
+
 		// Get oid sms verification, step 2.
 		EndSmsVerification(oid, code string, invocies []string) error
+
 		/*
 		 Creates a draft.
 		 The model parameter can be one of the following:
@@ -69,12 +74,16 @@ type (
 		 * entity.SelfEmployedReceipt
 		*/
 		CreateDraft(entity any) error
+
 		// Delete a draft.
 		DeleteDraft(document []string, reasons string) error
+
 		// Extends the getter interface.
 		getter
+
 		// Extends the setter interface.
 		setter
+
 		// Extends the lister interface.
 		lister
 	}
@@ -82,20 +91,26 @@ type (
 	getter interface {
 		// Get the token from the server.
 		GetToken() string
+
 		// Get the test credentials.
 		GetTestCredentials() (username, password string, err error)
+
 		// Get the credentials.
 		GetCridetials() (username, password string)
+
 		// Get the debug mode.
 		GetDebug() bool
+
 		// Get the user information.
 		GetUser() (user *entity.User, err error)
-		/*
-			Get the document download url.
 
-			Only self IP address can download the document.
+		/*
+		 Get the document download url.
+
+		 Only self IP address can download the document.
 		*/
 		GetDownloadURL(id uuid.UUID, signed bool) (string, error)
+
 		// Get the document html content.
 		GetHtml(id uuid.UUID, signed bool) ([]byte, error)
 	}
@@ -103,8 +118,10 @@ type (
 	setter interface {
 		// Set the token.
 		SetDebug(bool) Fatura
+
 		// Set the credentials.
 		SetCredentials(username, password string) Fatura
+
 		// Set the user information to the server.
 		UpdateUser(user *entity.User) (err error)
 	}
