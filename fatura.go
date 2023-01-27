@@ -171,7 +171,7 @@ type (
 		/*
 			Select a column.
 		*/
-		SelectColumn(column, key string) string
+		SelectColumn(column, key string) lister
 		/*
 			Map a column.
 		*/
@@ -775,9 +775,9 @@ func (b *bearer) FilterDocuments(document.Type) {
 }
 
 // TODO
-func (b *bearer) SelectColumn(column, key string) string {
+func (b *bearer) SelectColumn(column, key string) lister {
 	b.column.Add(column, key)
-	return ""
+	return b
 }
 
 // TODO
