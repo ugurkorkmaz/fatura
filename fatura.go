@@ -143,34 +143,110 @@ type (
 		UpdateUser(user *entity.User) (err error)
 	}
 	lister interface {
+		/*
+			Cancel a request.
+		*/
 		CancellationRequest(uuid.UUID, string) string
+		/*
+			Objection a request.
+		*/
 		ObjectionRequest() string
+		/*
+			Objection a request.
+		*/
 		GetRequests(start, end string) []string
+		/*
+			Get all documents.
+		*/
 		GetAll(start, end string)
+		/*
+			Filters documents.
+		*/
 		GetAllIssuedToMe(start, end, hourlySearch string)
+		/*
+			Filters documents.
+		*/
 		FilterDocuments(document.Type)
+		/*
+			Select a column.
+		*/
 		SelectColumn(column, key string) string
+		/*
+			Map a column.
+		*/
 		MapColumn(data []string) entity.Array
+		/*
+			Set the filters.
+		*/
 		SetFilters(filters []string) lister
+		/*
+			Set the limit.
+		*/
 		SetLimit(limit, offset int) lister
+		/*
+			Ascending sort.
+		*/
 		SortAsc() lister
+		/*
+			Descending sort.
+		*/
 		SortDesc() lister
+		/*
+			Set the row count.
+		*/
 		SetRowCount(int) lister
+		/*
+			Get the row count.
+		*/
 		RowCount() int
+		/*
+			Only signed documents.
+		*/
 		OnlySigned() lister
+		/*
+			Only unsigned documents.
+		*/
 		OnlyUnsigned() lister
+		/*
+			Only deleted documents.
+		*/
 		OnlyDeleted() lister
+		/*
+			Only active documents.
+		*/
 		OnlyCurrent() lister
+		/*
+			Only invoice documents.
+		*/
 		OnlyInvoice() lister
+		/*
+			Only producer receipt documents.
+		*/
 		OnlyProducerReceipt() lister
+		/*
+			Only self employed receipt documents.
+		*/
 		OnlySelfEmployedReceipt() lister
+		/*
+			Search by recipient name.
+		*/
 		FindRecipientName(string) lister
+		/*
+			Search by recipient id.
+		*/
 		FindRecipientId(string) lister
+		/*
+			Search by recipient tax number.
+		*/
 		FindEttn(string) lister
+		/*
+			Search by document id.
+		*/
 		FindDocumentId(string) lister
 	}
 )
 
+// Fatura is the main interface.
 type bearer struct {
 	uuid       uuid.UUID
 	sortByDesc bool
@@ -488,14 +564,16 @@ func (b *bearer) EndSmsVerification(oid, code string, uuids []string) error {
 	return nil
 }
 
-// Creates a draft.
-// The model parameter can be one of the following:
-//
-// * entity.Invoice
-//
-// * entity.ProducerReceipt
-//
-// * entity.SelfEmployedReceipt
+/*
+Creates a draft.
+The model parameter can be one of the following:
+
+* entity.Invoice
+
+* entity.ProducerReceipt
+
+* entity.SelfEmployedReceipt
+*/
 func (b *bearer) CreateDraft(model any) error {
 	var form url.Values
 
