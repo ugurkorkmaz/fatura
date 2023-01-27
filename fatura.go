@@ -47,27 +47,16 @@ type ApiError struct {
 	} `json:"messages"`
 }
 type (
-	// Fatura interface.
 	Fatura interface {
-		/*
-			Login to the server.
-		*/
+		// Login to the server.
 		Login() error
-		/*
-			Logout from the server.
-		*/
+		// Logout from the server.
 		Logout() error
-		/*
-			Gateway returns the gateway url.
-		*/
+		// Gateway returns regular url.
 		gateway(path Path) string
-		/*
-			Get oid sms verification, step 1.
-		*/
+		// Get oid sms verification, step 1.
 		StartSmsVerification(phone string) (string, error)
-		/*
-			Get oid sms verification, step 2.
-		*/
+		// Get oid sms verification, step 2.
 		EndSmsVerification(oid, code string, invocies []string) error
 		/*
 		 Creates a draft.
@@ -80,165 +69,116 @@ type (
 		 * entity.SelfEmployedReceipt
 		*/
 		CreateDraft(entity any) error
-		/*
-			Delete a draft.
-		*/
+		// Delete a draft.
 		DeleteDraft(document []string, reasons string) error
-		/*
-			Extends the getter interface.
-		*/
+		// Extends the getter interface.
 		getter
-		/*
-			Extends the setter interface.
-		*/
+		// Extends the setter interface.
 		setter
-		/*
-			Extends the lister interface.
-		*/
+		// Extends the lister interface.
 		lister
 	}
 	// Getter interface.
 	getter interface {
-		/*
-			Get the token from the server.
-		*/
+		// Get the token from the server.
 		GetToken() string
-		/*
-			Get the token from the server.
-		*/
+		// Get the test credentials.
 		GetTestCredentials() (username, password string, err error)
-		/*
-			Get the username and password.
-		*/
+		// Get the credentials.
 		GetCridetials() (username, password string)
-		/*
-			Get the debug mode.
-		*/
+		// Get the debug mode.
 		GetDebug() bool
-		/*
-			Get the user information from the server.
-		*/
+		// Get the user information.
 		GetUser() (user *entity.User, err error)
 		/*
 			Get the document download url.
+
+			Only self IP address can download the document.
 		*/
 		GetDownloadURL(id uuid.UUID, signed bool) (string, error)
-		/*
-		 Get the document html content.
-		*/
+		// Get the document html content.
 		GetHtml(id uuid.UUID, signed bool) ([]byte, error)
 	}
 	// Setter interface.
 	setter interface {
-		/*
-			Set the debug mode.
-		*/
+		// Set the token.
 		SetDebug(bool) Fatura
-		/*
-			Set the username and password.
-		*/
+		// Set the credentials.
 		SetCredentials(username, password string) Fatura
-		/*
-			Update the user information on the server.
-		*/
+		// Set the user information to the server.
 		UpdateUser(user *entity.User) (err error)
 	}
 	lister interface {
-		/*
-			Cancel a request.
-		*/
+		// Cancel a request.
 		CancellationRequest(uuid.UUID, string) string
-		/*
-			Objection a request.
-		*/
+
+		// Objection a request.
 		ObjectionRequest() string
-		/*
-			Objection a request.
-		*/
+
+		// Objection a request.
 		GetRequests(start, end string) []string
-		/*
-			Get all documents.
-		*/
+
+		// Get all documents.
 		GetAll(start, end string)
-		/*
-			Filters documents.
-		*/
+
+		// Filters documents.
 		GetAllIssuedToMe(start, end, hourlySearch string)
-		/*
-			Filters documents.
-		*/
+
+		// Filters documents.
 		FilterDocuments(document.Type)
-		/*
-			Select a column.
-		*/
+
+		// Select a column.
 		SelectColumn(column, key string) lister
-		/*
-			Map a column.
-		*/
+
+		// Map a column.
 		MapColumn(data []string) entity.Array
-		/*
-			Set the limit.
-		*/
+
+		// Set the limit.
 		SetLimit(limit, offset int) lister
-		/*
-			Ascending sort.
-		*/
+
+		// Ascending sort.
 		SortAsc() lister
-		/*
-			Descending sort.
-		*/
+
+		// Descending sort.
 		SortDesc() lister
-		/*
-			Set the row count.
-		*/
+
+		// Set the row count.
 		SetRowCount(int) lister
-		/*
-			Get the row count.
-		*/
+
+		// Get the row count.
 		RowCount() int
-		/*
-			Only signed documents.
-		*/
+
+		// Only signed documents.
 		OnlySigned() lister
-		/*
-			Only unsigned documents.
-		*/
+
+		// Only unsigned documents.
 		OnlyUnsigned() lister
-		/*
-			Only deleted documents.
-		*/
+
+		// Only deleted documents.
 		OnlyDeleted() lister
-		/*
-			Only active documents.
-		*/
+
+		// Only active documents.
 		OnlyCurrent() lister
-		/*
-			Only invoice documents.
-		*/
+
+		// Only invoice documents.
 		OnlyInvoice() lister
-		/*
-			Only producer receipt documents.
-		*/
+
+		// Only producer receipt documents.
 		OnlyProducerReceipt() lister
-		/*
-			Only self employed receipt documents.
-		*/
+
+		// Only self employed receipt documents.
 		OnlySelfEmployedReceipt() lister
-		/*
-			Search by recipient name.
-		*/
+
+		// Search by recipient name.
 		FindRecipientName(string) lister
-		/*
-			Search by recipient id.
-		*/
+
+		// Search by recipient id.
 		FindRecipientId(string) lister
-		/*
-			Search by recipient tax number.
-		*/
+
+		// Search by recipient tax number.
 		FindEttn(string) lister
-		/*
-			Search by document id.
-		*/
+
+		// Search by document id.
 		FindDocumentId(string) lister
 	}
 )
@@ -774,18 +714,18 @@ func (b *bearer) FilterDocuments(document.Type) {
 	panic("not implemented")
 }
 
-// TODO
+// Select the column to be used in the list.
 func (b *bearer) SelectColumn(column, key string) lister {
 	b.column.Add(column, key)
 	return b
 }
 
-// TODO
+// Map the column to the entity.
 func (b *bearer) MapColumn(data []string) entity.Array {
 	panic("not implemented")
 }
 
-// TODO
+// Set the limit and offset.
 func (b *bearer) SetLimit(limit, offset int) lister {
 	b.limit = []int{limit, offset}
 	return b
@@ -814,67 +754,67 @@ func (b *bearer) RowCount() int {
 	return b.rowCount
 }
 
-// TODO
+// Only get the signed documents.
 func (b *bearer) OnlySigned() lister {
 	b.filters.Add("onayDurumu", "Onaylandı")
 	return b
 }
 
-// TODO
+// Only get the unsigned documents.
 func (b *bearer) OnlyUnsigned() lister {
 	b.filters.Add("onayDurumu", "Onaylanmadı")
 	return b
 }
 
-// TODO
+// Only get the deleted documents.
 func (b *bearer) OnlyDeleted() lister {
 	b.filters.Add("onayDurumu", "Silinmiş")
 	return b
 }
 
-// TODO
+// Only get the documents with the given id.
 func (b *bearer) OnlyCurrent() lister {
 	b.filters.Add("belgeTuru", b.document.String())
 	return b
 }
 
-// TODO
+// Only get the documents with the given id.
 func (b *bearer) OnlyInvoice() lister {
 	b.filters.Add("belgeTuru", document.Invoice.String())
 	return b
 }
 
-// TODO
+// Only get the ProducerReceipt documents.
 func (b *bearer) OnlyProducerReceipt() lister {
 	b.filters.Add("belgeTuru", document.ProducerReceipt.String())
 	return b
 }
 
-// TODO
+// Only get the SelfEmployedReceipt documents.
 func (b *bearer) OnlySelfEmployedReceipt() lister {
 	b.filters.Add("belgeTuru", document.SelfEmployedReceipt.String())
 	return b
 }
 
-// TODO
+// Search for the given value in the document.
 func (b *bearer) FindRecipientName(value string) lister {
 	b.filters.Add("aliciUnvanAdSoyad", value)
 	return b
 }
 
-// TODO
+// Search for the given value in the document.
 func (b *bearer) FindRecipientId(value string) lister {
 	b.filters.Add("aliciVknTckn", value)
 	return b
 }
 
-// TODO
+// Search for the given value in the document.
 func (b *bearer) FindEttn(value string) lister {
 	b.filters.Add("ettn", value)
 	return b
 }
 
-// TODO
+// Search for the given value in the document.
 func (b *bearer) FindDocumentId(value string) lister {
 	b.filters.Add("belgeNumarasi", value)
 	return b
