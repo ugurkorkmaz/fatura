@@ -35,6 +35,9 @@ const (
 // HTTP client.
 var client *http.Client = &http.Client{}
 
+/*
+ApiError is the error returned by the server.
+*/
 type ApiError struct {
 	Error    bool `json:"error"`
 	Messages []struct {
@@ -43,61 +46,100 @@ type ApiError struct {
 	} `json:"messages"`
 }
 type (
-	Models interface{ entity.Invoice | entity.User }
 	// Fatura interface.
 	Fatura interface {
-		// Login to the server.
+		/*
+			Login to the server.
+		*/
 		Login() error
-		// Logout from the server.
+		/*
+			Logout from the server.
+		*/
 		Logout() error
-		// Gateway returns the gateway url.
+		/*
+			Gateway returns the gateway url.
+		*/
 		gateway(path Path) string
-		// Get oid sms verification, step 1.
+		/*
+			Get oid sms verification, step 1.
+		*/
 		StartSmsVerification(phone string) (string, error)
-		// Get oid sms verification, step 2.
+		/*
+			Get oid sms verification, step 2.
+		*/
 		EndSmsVerification(oid, code string, invocies []string) error
-		// Creates a draft.
-		// The model parameter can be one of the following:
-		//
-		// * entity.Invoice
-		//
-		// * entity.ProducerReceipt
-		//
-		// * entity.SelfEmployedReceipt
+		/*
+		 Creates a draft.
+		 The model parameter can be one of the following:
+
+		 * entity.Invoice
+
+		 * entity.ProducerReceipt
+
+		 * entity.SelfEmployedReceipt
+		*/
 		CreateDraft(entity any) error
-		// Delete a draft.
+		/*
+			Delete a draft.
+		*/
 		DeleteDraft(document []string, reasons string) error
-		// Extends the getter interface.
+		/*
+			Extends the getter interface.
+		*/
 		getter
-		// Extends the setter interface.
+		/*
+			Extends the setter interface.
+		*/
 		setter
-		// Extends the lister interface.
+		/*
+			Extends the lister interface.
+		*/
 		lister
 	}
 	// Getter interface.
 	getter interface {
-		// Get the token from the server.
+		/*
+			Get the token from the server.
+		*/
 		GetToken() string
-		// Get the token from the server.
+		/*
+			Get the token from the server.
+		*/
 		GetTestCredentials() (username, password string, err error)
-		// Get the username and password.
+		/*
+			Get the username and password.
+		*/
 		GetCridetials() (username, password string)
-		// Get the debug mode.
+		/*
+			Get the debug mode.
+		*/
 		GetDebug() bool
-		// Get the user information from the server.
+		/*
+			Get the user information from the server.
+		*/
 		GetUser() (user *entity.User, err error)
-		// Get the document download url.
+		/*
+			Get the document download url.
+		*/
 		GetDownloadURL(id uuid.UUID, signed bool) (string, error)
-		// Get the document html content.
+		/*
+		 Get the document html content.
+		*/
 		GetHtml(id uuid.UUID, signed bool) ([]byte, error)
 	}
 	// Setter interface.
 	setter interface {
-		// Set the debug mode.
+		/*
+			Set the debug mode.
+		*/
 		SetDebug(bool) Fatura
-		// Set the username and password.
+		/*
+			Set the username and password.
+		*/
 		SetCredentials(username, password string) Fatura
-		// Update the user information on the server.
+		/*
+			Update the user information on the server.
+		*/
 		UpdateUser(user *entity.User) (err error)
 	}
 	lister interface {
