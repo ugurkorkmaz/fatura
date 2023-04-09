@@ -50,4 +50,6 @@ func (s *SelfEmployedReceipt) Json() string {
 	return string(b)
 }
 
-func (s *SelfEmployedReceipt) AddItem(item SelfEmployedItem) {}
+func (s *SelfEmployedReceipt) AddItem(item SelfEmployedItem) {
+	s.MalHizmetTable = item
+}

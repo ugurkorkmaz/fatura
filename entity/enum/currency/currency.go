@@ -1,5 +1,7 @@
 package currency
 
+import "fatura/entity/enum"
+
 type Type int
 
 func (c Type) String() string {
@@ -55,7 +57,7 @@ func (c Type) Alias() string {
 }
 
 const (
-	AFN Type = iota
+	AFN Type = iota + enum.HeadEnumCurrency
 	DZD
 	ARS
 	AWG

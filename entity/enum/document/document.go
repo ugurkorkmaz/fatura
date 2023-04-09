@@ -1,10 +1,12 @@
 package document
 
+import "fatura/entity/enum"
+
 // Document is a type of enum
 type Type int
 
 const (
-	Invoice Type = iota
+	Invoice Type = iota + enum.HeadEnumDocument
 	ProducerReceipt
 	SelfEmployedReceipt
 )

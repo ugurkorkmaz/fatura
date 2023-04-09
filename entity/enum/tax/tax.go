@@ -1,9 +1,11 @@
 package tax
 
+import "fatura/entity/enum"
+
 type Type int
 
 const (
-	BankaMuameleleri Type = iota
+	BankaMuameleleri Type = iota + enum.HeadEnumTax
 	KKDFKesintisi
 	OTV1Liste
 	OTV2Liste

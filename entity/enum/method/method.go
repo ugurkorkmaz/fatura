@@ -1,9 +1,11 @@
 package method
 
+import "fatura/entity/enum"
+
 type Type int
 
 const (
-	Noter Type = iota
+	Noter Type = iota + enum.HeadEnumMethod
 	TaahhutluMektup
 	Telgraf
 	Kep
