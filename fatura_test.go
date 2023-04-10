@@ -2,7 +2,6 @@ package fatura_test
 
 import (
 	"fatura"
-	"fatura/entity"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,36 +17,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	fatura_new.SetDebug(true)
-}
-
-func TestSetDebug(t *testing.T) {
-	fatura_new.SetDebug(true)
-	if !fatura_new.GetDebug() {
-		t.Error("SetDebug() failed")
-	}
-}
-
-func TestGetDebug(t *testing.T) {
-	fatura_new.SetDebug(true)
-	if !fatura_new.GetDebug() {
-		t.Error("GetDebug() failed")
-	}
-}
-
-func TestSetCredentials(t *testing.T) {
-	f := fatura_new.SetCredentials("username", "password")
-
-	username, password := f.GetCridetials()
-	assert.Equal(t, "username", username)
-	assert.Equal(t, "password", password)
-}
-
-func TestGetCridetials(t *testing.T) {
-	f := fatura_new.SetCredentials("username", "password")
-	username, password := f.GetCridetials()
-	assert.Equal(t, "username", username)
-	assert.Equal(t, "password", password)
+	fatura_new = fatura_new.Debug()
 }
 
 func TestGetTestCredentials(t *testing.T) {
@@ -59,66 +29,44 @@ func TestGetTestCredentials(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	f := fatura_new.SetCredentials(username, password)
-	f.SetDebug(true)
-	err := f.Login()
+	u, err := fatura_new.Login(username, password)
 	if err != nil {
+		t.Error("Login() failed")
+	}
+	if u == nil {
+		t.Error("Login() failed")
+	}
+
+	if u.Token() == "" {
 		t.Error("Login() failed")
 	}
 }
 
 func TestLogout(t *testing.T) {
-	f := fatura_new.SetCredentials(username, password)
-	f.SetDebug(true)
-	err := f.Login()
+	_, err := fatura_new.Login(username, password)
 	if err != nil {
 		t.Error("Login() failed")
 	}
-
-	err = f.Logout()
+	err = fatura_new.Logout()
 	if err != nil {
 		t.Error("Logout() failed")
 	}
 }
 
 func TestGetUser(t *testing.T) {
-	f := fatura_new.SetCredentials(username, password)
-	f.SetDebug(true)
-	err := f.Login()
+	_, err := fatura_new.Login(username, password)
 	if err != nil {
 		t.Error("Login() failed")
 	}
 
-	_, err = f.GetUser()
+	u, err := fatura_new.User()
 	if err != nil {
 		t.Error("GetUser() failed")
 	}
-	f.Logout()
-}
-
-func TestUpdateUser(t *testing.T) {
-	f := fatura_new.SetCredentials(username, password)
-	f.SetDebug(true)
-	err := f.Login()
-	if err != nil {
-		t.Error("Login() failed")
-	}
-
-	user := &entity.User{}
-	user.Kasaba = "Kasaba"
-
-	err = f.UpdateUser(user)
-	if err != nil {
-		t.Error("UpdateUser() failed")
-	}
-
-	user, err = f.GetUser()
-	if err != nil {
+	if u == nil {
 		t.Error("GetUser() failed")
 	}
-
-	assert.Equal(t, "Kasaba", user.Kasaba)
-	err = f.Logout()
+	err = fatura_new.Logout()
 	if err != nil {
 		t.Error("Logout() failed")
 	}
