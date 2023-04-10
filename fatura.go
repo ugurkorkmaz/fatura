@@ -1,207 +1,72 @@
 package fatura
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fatura/entity"
 	"fatura/entity/enum/document"
 	"fatura/types"
-	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jung-kurt/gofpdf"
 )
 
-type (
-	Api  string
-	Path string
-)
+type Ifatura interface {
+	// Login to the server.
+	Login() error
 
-const (
-	BASE Api = "https://earsivportal.efatura.gov.tr"
-	TEST Api = "https://earsivportaltest.efatura.gov.tr"
-)
+	// Logout from the server.
+	Logout() error
 
-const (
-	DISPATCH Path = "/earsiv-services/dispatch"
-	DOWNLOAD Path = "/earsiv-services/download"
-	LOGIN    Path = "/earsiv-services/assos-login"
-	REFERRER Path = "/intragiris.html"
-	ESIGN    Path = "/earsiv-services/esign"
-)
+	// Gateway returns regular url.
+	gateway(path Path) string
 
-// HTTP client.
-var client *http.Client = &http.Client{}
+	// Get oid sms verification, step 1.
+	StartSmsVerification(phone string) (string, error)
 
-/*
-ApiError is the error returned by the server.
-*/
-type ApiError struct {
-	Error    bool `json:"error"`
-	Messages []struct {
-		Type int64  `json:"type"`
-		Text string `json:"text"`
-	} `json:"messages"`
+	// Get oid sms verification, step 2.
+	EndSmsVerification(oid, code string, invocies []string) error
+
+	/*
+	 Creates a draft.
+	 The model parameter can be one of the following:
+
+	 * entity.Invoice
+
+	 * entity.ProducerReceipt
+
+	 * entity.SelfEmployedReceipt
+	*/
+	CreateDraft(entity any) error
+
+	// Delete a draft.
+	DeleteDraft(document []string, reasons string) error
+
+	// Cancel a request.
+	CancellationRequest(uuid.UUID, string) string
+
+	// Objection a request.
+	ObjectionRequest() string
+
+	// Objection a request.
+	GetRequests(start, end string) []string
+
+	// Extends the getter interface.
+	getter
+
+	// Extends the setter interface.
+	setter
+
+	// Extends the lister interface.
+	List() lister
 }
-type (
-	Fatura interface {
-		// Login to the server.
-		Login() error
 
-		// Logout from the server.
-		Logout() error
-
-		// Gateway returns regular url.
-		gateway(path Path) string
-
-		// Get oid sms verification, step 1.
-		StartSmsVerification(phone string) (string, error)
-
-		// Get oid sms verification, step 2.
-		EndSmsVerification(oid, code string, invocies []string) error
-
-		/*
-		 Creates a draft.
-		 The model parameter can be one of the following:
-
-		 * entity.Invoice
-
-		 * entity.ProducerReceipt
-
-		 * entity.SelfEmployedReceipt
-		*/
-		CreateDraft(entity any) error
-
-		// Delete a draft.
-		DeleteDraft(document []string, reasons string) error
-
-		// Extends the getter interface.
-		getter
-
-		// Extends the setter interface.
-		setter
-
-		// Extends the lister interface.
-		lister
-	}
-	// Getter interface.
-	getter interface {
-		// Get the token from the server.
-		GetToken() string
-
-		// Get the test credentials.
-		GetTestCredentials() (username, password string, err error)
-
-		// Get the credentials.
-		GetCridetials() (username, password string)
-
-		// Get the debug mode.
-		GetDebug() bool
-
-		// Get the user information.
-		GetUser() (user *entity.User, err error)
-
-		/*
-		 Get the document download url.
-
-		 Only self IP address can download the document.
-		*/
-		GetDownloadURL(id uuid.UUID, signed bool) (string, error)
-
-		// Get the document html content.
-		GetHtml(id uuid.UUID, signed bool) ([]byte, error)
-	}
-	// Setter interface.
-	setter interface {
-		// Set the token.
-		SetDebug(bool) Fatura
-
-		// Set the credentials.
-		SetCredentials(username, password string) Fatura
-
-		// Set the user information to the server.
-		UpdateUser(user *entity.User) (err error)
-	}
-	lister interface {
-		// Cancel a request.
-		CancellationRequest(uuid.UUID, string) string
-
-		// Objection a request.
-		ObjectionRequest() string
-
-		// Objection a request.
-		GetRequests(start, end string) []string
-
-		// Get all documents.
-		GetAll(start, end string)
-
-		// Filters documents.
-		GetAllIssuedToMe(start, end, hourlySearch string)
-
-		// Filters documents.
-		FilterDocuments(document.Type)
-
-		// Select a column.
-		SelectColumn(column, key string) lister
-
-		// Map a column.
-		MapColumn(data []string) entity.Array
-
-		// Set the limit.
-		SetLimit(limit, offset int) lister
-
-		// Ascending sort.
-		SortAsc() lister
-
-		// Descending sort.
-		SortDesc() lister
-
-		// Set the row count.
-		SetRowCount(int) lister
-
-		// Get the row count.
-		RowCount() int
-
-		// Only signed documents.
-		OnlySigned() lister
-
-		// Only unsigned documents.
-		OnlyUnsigned() lister
-
-		// Only deleted documents.
-		OnlyDeleted() lister
-
-		// Only active documents.
-		OnlyCurrent() lister
-
-		// Only invoice documents.
-		OnlyInvoice() lister
-
-		// Only producer receipt documents.
-		OnlyProducerReceipt() lister
-
-		// Only self employed receipt documents.
-		OnlySelfEmployedReceipt() lister
-
-		// Search by recipient name.
-		FindRecipientName(string) lister
-
-		// Search by recipient id.
-		FindRecipientId(string) lister
-
-		// Search by recipient tax number.
-		FindEttn(string) lister
-
-		// Search by document id.
-		FindDocumentId(string) lister
-	}
-)
-
-// Fatura is the main interface.
-type bearer struct {
+type Fatura struct {
 	uuid       uuid.UUID
 	sortByDesc bool
 	rowCount   int
@@ -215,9 +80,37 @@ type bearer struct {
 	token      string
 }
 
-// Returns a new Fatura instance.
-func New() Fatura {
-	return &bearer{
+func toPath(path Path, debug bool) string {
+	baseMode := string(BASE)
+	basePath := string(path)
+	if debug {
+		baseMode = string(TEST)
+	}
+	return baseMode + basePath
+}
+
+func gateway(path Path, debug bool, data types.Array) (types.Array, error) {
+	var (
+		address  = toPath(path, false)
+		body     = url.Values(data)
+		response = make(types.Array)
+	)
+
+	query, err := client.PostForm(address, body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.NewDecoder(query.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// This function returns a new instance of the Fatura.
+func New() *Fatura {
+	return &Fatura{
 		uuid:       uuid.New(),
 		sortByDesc: false,
 		rowCount:   100,
@@ -229,610 +122,393 @@ func New() Fatura {
 	}
 }
 
-// Gateway returns the gateway url.
-func (b *bearer) gateway(path Path) string {
-	if b.debug {
-		return string(TEST) + string(path)
+// This function sets the debug flag to true.
+func (f *Fatura) Debug() *Fatura {
+	f.debug = true
+	return f
+}
+func (f *Fatura) GetTestCredentials() (username, password string, err error) {
+
+	var body = types.Array{}
+
+	body.Add("assoscmd", "kullaniciOner")
+	body.Add("rtype", "json")
+
+	response, err := gateway(LOGIN, f.debug, body)
+	if err != nil {
+		return "", "", err
 	}
-	return string(BASE) + string(path)
-}
+	if response.Has("error") {
+		return "", "", errors.New("login failed")
+	}
+	return response.Get("userid"), "1", nil
 
-// Set parameters.
-func (b *bearer) params(cmd, pagename string, data types.Array) url.Values {
-	p := url.Values{}
-	p.Add("callid", uuid.NewString())
-	p.Add("token", b.token)
-	p.Add("cmd", cmd)
-	p.Add("pageName", pagename)
-	p.Add("jp", data.Json())
-	return p
-}
-
-// Get the token from the server.
-func (b *bearer) GetToken() string {
-	return b.token
-}
-
-// Set the debug mode.
-func (b *bearer) SetDebug(debug bool) Fatura {
-	b.debug = debug
-	return b
-}
-
-// Get the debug mode.
-func (b *bearer) GetDebug() bool {
-	return b.debug
 }
 
 // Set the username and password.
-func (b *bearer) SetCredentials(username, password string) Fatura {
-	b.username = username
-	b.password = password
-	return b
+func (f *Fatura) Login(username, password string) (fatura *Fatura, err error) {
+	f.username = username
+	f.password = password
+
+	if f.username == "" || f.password == "" {
+		return f, errors.New("username and password cannot be empty")
+	}
+
+	// Array type is a map[string]interface{}.
+	var body = types.Array{}
+
+	body.Add("assoscmd", "anologin")
+	body.Add("userid", f.username)
+	body.Add("sifre", f.password)
+	body.Add("sifre2", f.password)
+	body.Add("parola", f.password)
+
+	// Check if debug mode is enabled.
+	if f.debug {
+		body.Set("assoscmd", "login")
+	}
+
+	// Send the request to the gateway.
+	response, err := gateway(LOGIN, f.debug, body)
+	if err != nil {
+		return f, err
+	}
+
+	if response.Has("error") {
+		return f, errors.New("login failed")
+	}
+
+	f.token = response.Get("token")
+	return f, nil
 }
 
-// Get the username and password.
-func (b *bearer) GetCridetials() (username, password string) {
-	return b.username, b.password
-}
+func (f *Fatura) Logout() error {
 
-// Get the test credentials from the server.
-func (b *bearer) GetTestCredentials() (username, password string, err error) {
-	res, err := client.PostForm(b.gateway(ESIGN), url.Values{
-		"assoscmd": []string{"kullaniciOner"},
-		"rtype":    []string{"json"},
-	})
+	var body = types.Array{}
 
+	if f.token == "" {
+		return errors.New("token cannot be empty")
+	}
+
+	body.Add("assoscmd", "logout")
+	body.Add("token", f.token)
+
+	response, err := gateway(LOGIN, f.debug, body)
 	if err != nil {
-		return "", "", errors.New("Error while sending request: " + err.Error())
+		return err
 	}
 
-	jsonData, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", "", errors.New("Error while reading response: " + err.Error())
+	if response.Has("error") {
+		return errors.New("logout failed")
 	}
 
-	var data map[string]interface{}
-	err = json.Unmarshal(jsonData, &data)
-	if err != nil {
-		return "", "", errors.New("Error while parsing response: " + err.Error())
-	}
-	if data["userid"].(string) == "" {
-		return "", "", errors.New("Error while parsing response: " + err.Error())
-	}
-	return data["userid"].(string), "1", nil
-}
-
-// Login to the server.
-func (b *bearer) Login() error {
-	if b.username == "" || b.password == "" {
-		return errors.New("username or password is empty")
-	}
-	assoscmd := []string{"anologin"}
-	if b.debug {
-		assoscmd = []string{"login"}
-	}
-	res, err := client.PostForm(b.gateway(LOGIN), url.Values{
-		"assoscmd": assoscmd,
-		"userid":   []string{b.username},
-		"sifre":    []string{b.password},
-		"sifre2":   []string{b.password},
-		"parola":   []string{b.password},
-	})
-	if err != nil {
-		return errors.New("Error while sending request: " + err.Error())
-	}
-
-	jsonData, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return errors.New("Error while reading response: " + err.Error())
-	}
-
-	var data map[string]interface{}
-	err = json.Unmarshal(jsonData, &data)
-	if err != nil {
-		return errors.New("Error while parsing response: " + err.Error())
-	}
-
-	if data["token"] == nil {
-		fmt.Println(b.token)
-		fmt.Println(string(jsonData))
-		return errors.New("token is nil")
-	}
-	b.token = data["token"].(string)
+	f.token = ""
+	f.username = ""
+	f.password = ""
 	return nil
 }
 
-// Logout from the server.
-func (b *bearer) Logout() error {
-	if b.token == "" {
-		return errors.New("token is empty")
-	}
-	res, err := client.PostForm(b.gateway(LOGIN), url.Values{
-		"assoscmd": []string{"logout"},
-		"token":    []string{b.token},
-	})
-	if err != nil {
-		return errors.New("Error while sending request: " + err.Error())
-	}
-
-	jsonData, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return errors.New("Error while reading response: " + err.Error())
-	}
-
-	var data map[string]interface{}
-	err = json.Unmarshal(jsonData, &data)
-	if err != nil {
-		return errors.New("Error while parsing response: " + err.Error())
-	}
-	b.username = ""
-	b.password = ""
-	b.token = ""
-	return nil
+// Get the token.
+func (f *Fatura) Token() (token string) {
+	return f.token
 }
 
-// Get the user information from the server.
-func (b *bearer) GetUser() (user *entity.User, err error) {
-	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
-		"callid":   []string{b.uuid.String()},
-		"token":    []string{b.token},
-		"cmd":      []string{"EARSIV_PORTAL_KULLANICI_BILGILERI_GETIR"},
-		"pageName": []string{"RG_KULLANICI"},
-		"jp":       []string{""},
-	})
+// Get the User.
+func (f *Fatura) User() (*entity.User, error) {
 
+	var body = types.Array{}
+
+	body.Add("callid", f.uuid.String())
+	body.Add("token", f.token)
+	body.Add("cmd", "EARSIV_PORTAL_KULLANICI_BILGILERI_GETIR")
+	body.Add("pageName", "RG_KULLANICI")
+	body.Add("jp", "")
+
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return nil, errors.New("Error while sending request: " + err.Error())
-	}
-	jsonData, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, errors.New("Error while reading response: " + err.Error())
-	}
-	var result struct {
-		Data entity.User `json:"data"`
-	}
-	err = json.Unmarshal(jsonData, &result)
-	if err != nil {
-		return nil, errors.New("Error while parsing response: " + err.Error())
+		return nil, err
 	}
 
-	return &result.Data, nil
+	if response.Has("error") {
+		return nil, errors.New("user not found")
+	}
+
+	var user = entity.User{}
+
+	err = json.Unmarshal([]byte(response.Json()), &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+
 }
 
-// Update the user information on the server.
-func (b *bearer) UpdateUser(user *entity.User) error {
-	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
-		"callid":   []string{b.uuid.String()},
-		"token":    []string{b.token},
-		"cmd":      []string{"EARSIV_PORTAL_KULLANICI_BILGILERI_GETIR"},
-		"pageName": []string{"RG_KULLANICI"},
-		"jp":       []string{""},
-	})
+// Start the sms verification.
+func (f *Fatura) StartSmsVerification(phone string) (string, error) {
+	var (
+		body = types.Array{}
+		jp   = types.Array{}
+	)
+	jp.Add("CEPTEL", phone)
+	jp.Add("KCEPTEL", "")
+	jp.Add("TIP", "1")
+
+	body.Add("callid", f.uuid.String())
+	body.Add("token", f.token)
+	body.Add("cmd", "EARSIV_PORTAL_SMSSIFRE_GONDER")
+	body.Add("pageName", "RG_SMSONAY")
+	body.Add("jp", jp.Json())
+
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return errors.New("Error while sending request: " + err.Error())
+		return "", err
 	}
-	jsonData, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return errors.New("Error while reading response: " + err.Error())
+
+	if response.Has("error") {
+		return "", errors.New("sms verification failed")
 	}
-	var result struct {
-		Data entity.User `json:"data"`
+
+	if !response.Has("oid") {
+		return "", errors.New("sms verification failed")
 	}
-	err = json.Unmarshal(jsonData, &result)
-	if err != nil {
-		return errors.New("Error while parsing response: " + err.Error())
-	}
-	return nil
+
+	return response.Get("oid"), nil
 }
 
-// Starts the sms verification process.
-func (b *bearer) StartSmsVerification(phone string) (string, error) {
-	var err error
-	var jp struct {
-		CEPTEL  string `json:"CEPTEL"`
-		KCEPTEL string `json:"KCEPTEL"`
-		TIP     string `json:"TIP"`
-	}
-	jp.CEPTEL = phone
-	jp.KCEPTEL = ""
-	jp.TIP = "1"
+// EndSmsVerification ends the sms verification.
+func (f *Fatura) EndSmsVerification(oid, code string, uuids []string) error {
+	var body = types.Array{}
+	var jp = types.Array{}
 
-	jsonData, err := json.Marshal(jp)
+	jp.Add("DATA", strings.Join(uuids, ","))
+	jp.Add("SIFRE", code)
+	jp.Add("OID", oid)
+	jp.Add("TIP", "1")
+
+	body.Add("callid", f.uuid.String())
+	body.Add("token", f.token)
+	body.Add("cmd", "0lhozfib5410mp")
+	body.Add("pageName", "RG_SMSONAY")
+	body.Add("jp", jp.Json())
+
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return "", errors.New("Error while parsing data: " + err.Error())
-	}
-	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
-		"callid":   []string{uuid.NewString()},
-		"token":    []string{b.token},
-		"cmd":      []string{"EARSIV_PORTAL_SMSSIFRE_GONDER"},
-		"pageName": []string{"RG_SMSONAY"},
-		"jp":       []string{string(jsonData)},
-	})
-	if err != nil {
-		return "", errors.New("Error while sending request: " + err.Error())
-	}
-	jsonData, err = ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", errors.New("Error while reading response: " + err.Error())
+		return err
 	}
 
-	var result struct {
-		Data struct {
-			Oid string `json:"oid"`
-		} `json:"data"`
-	}
-	err = json.Unmarshal(jsonData, &result)
-	if err != nil {
-		return "", errors.New("Error while parsing response: " + err.Error())
+	if response.Has("error") {
+		return errors.New("sms verification failed")
 	}
 
-	if result.Data.Oid == "" {
-		return "", errors.New("oid is empty")
-	}
-	return result.Data.Oid, nil
-}
-
-// Ends the sms verification process.
-func (b *bearer) EndSmsVerification(oid, code string, uuids []string) error {
-	params := map[string]interface{}{
-		"DATA":  uuids,
-		"SIFRE": code,
-		"OID":   oid,
-		"OPR":   1,
+	if !response.Has("oid") {
+		return errors.New("sms verification failed")
 	}
 
-	_json, err := json.Marshal(params)
-	if err != nil {
-		return errors.New("Error while parsing data: " + err.Error())
-	}
-	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
-		"callid":   []string{uuid.NewString()},
-		"token":    []string{b.token},
-		"cmd":      []string{"0lhozfib5410mp"},
-		"pageName": []string{"RG_SMSONAY"},
-		"jp":       []string{string(_json)},
-	})
-	if err != nil {
-		return errors.New("Error while sending request: " + err.Error())
-	}
-	_data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return errors.New("Error while reading response: " + err.Error())
-	}
-
-	var _err ApiError = ApiError{}
-	err = json.Unmarshal(_data, &_err)
-	if err != nil {
-		return errors.New("Error while parsing response: " + err.Error())
-	}
-	for _, e := range _err.Messages {
-		return errors.New(e.Text)
-	}
-
-	var result struct {
-		Data struct {
-			Sonuc string `json:"sonuc"`
-		} `json:"data"`
-	}
-	err = json.Unmarshal(_data, &result)
-	if err != nil {
-		return errors.New("Error while parsing response: " + err.Error())
-	}
-
-	if result.Data.Sonuc != "1" {
-		return errors.New("error while verifying sms code")
-	}
-	for i := range uuids {
-		b.rowCount = i + 1
+	if response.Get("sonuc") != "1" {
+		return errors.New("sms verification failed")
 	}
 
 	return nil
 }
 
-/*
-Creates a draft.
-The model parameter can be one of the following:
-
-* entity.Invoice
-
-* entity.ProducerReceipt
-
-* entity.SelfEmployedReceipt
-*/
-func (b *bearer) CreateDraft(model any) error {
-	var form url.Values
+func (f *Fatura) CreateDraft(model any) error {
+	var body = types.Array{}
 
 	switch model := model.(type) {
 	case *entity.Invoice:
-		form.Add("jp", model.Json())
-		form.Add("cmd", "EARSIV_PORTAL_FATURA_OLUSTUR")
-		form.Add("pageName", "RG_BASITFATURA")
+		body.Add("jp", model.Json())
+		body.Add("cmd", "EARSIV_PORTAL_FATURA_OLUSTUR")
+		body.Add("pageName", "RG_BASITFATURA")
 	case *entity.ProducerReceipt:
-		form.Add("jp", model.Json())
-		form.Add("cmd", "EARSIV_PORTAL_MUSTAHSIL_OLUSTUR")
-		form.Add("pageName", "RG_MUSTAHSIL")
+		body.Add("jp", model.Json())
+		body.Add("cmd", "EARSIV_PORTAL_MUSTAHSIL_OLUSTUR")
+		body.Add("pageName", "RG_MUSTAHSIL")
 	case *entity.SelfEmployedReceipt:
-		form.Add("jp", model.Json())
-		form.Add("cmd", "EARSIV_PORTAL_SERBEST_MESLEK_MAKBUZU_OLUSTUR")
-		form.Add("pageName", "RG_SERBEST")
+		body.Add("jp", model.Json())
+		body.Add("cmd", "EARSIV_PORTAL_SERBEST_MESLEK_MAKBUZU_OLUSTUR")
+		body.Add("pageName", "RG_SERBEST")
 	default:
-		return errors.New("invalid model")
+		return errors.New("invalid entity type")
 	}
 
-	res, err := client.PostForm(b.gateway(DISPATCH), form)
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return errors.New("Error while sending request: " + err.Error())
-	}
-	jsonData, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return errors.New("Error while reading response: " + err.Error())
+		return err
 	}
 
-	var result ApiError = ApiError{}
-	err = json.Unmarshal(jsonData, &result)
-	if err != nil {
-		return errors.New("Error while parsing response: " + err.Error())
+	if response.Has("error") {
+		return errors.New("draft creation failed")
 	}
-	if len(result.Messages) > 0 {
-		for _, e := range result.Messages {
-			return errors.New(e.Text)
-		}
-	}
-	if !strings.Contains(string(jsonData), "başarıyla") {
-		return errors.New("error while creating draft")
+
+	if strings.Contains(response.Json(), "başarıyla") {
+		return errors.New("draft creation failed")
 	}
 	return nil
 }
 
-func (b *bearer) DeleteDraft(uuids []string, reasons string) error {
-	var jp []map[string]interface{}
+func (f *Fatura) DeleteDraft(uuids []string, reasons string) error {
+	var (
+		body = types.Array{}
+		jp   = types.Array{}
+	)
 	for _, uuid := range uuids {
-		jp = append(jp, map[string]interface{}{
-			"belgeTuru": b.document.String(),
-			"ettn":      uuid,
-		})
-	}
-	_json, err := json.Marshal(jp)
-	if err != nil {
-		return errors.New("Error while parsing data: " + err.Error())
-	}
-	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
-		"token":    []string{b.token},
-		"cmd":      []string{"EARSIV_PORTAL_FATURA_SIL"},
-		"pageName": []string{"RG_TASLAKLAR"},
-		"jp":       []string{string(_json)},
-	})
-	if err != nil {
-		return errors.New("Error while sending request: " + err.Error())
-	}
-	_data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return errors.New("Error while reading response: " + err.Error())
+		jp.Add("belgeTuru", "FATURA")
+		jp.Add("ettn", uuid)
 	}
 
-	var _err ApiError = ApiError{}
-	err = json.Unmarshal(_data, &_err)
+	body.Add("callid", f.uuid.String())
+	body.Add("token", f.token)
+	body.Add("cmd", "EARSIV_PORTAL_FATURA_SIL")
+	body.Add("pageName", "RG_BASITFATURA")
+	body.Add("jp", jp.Json())
+
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return errors.New("Error while parsing response: " + err.Error())
-	}
-	for _, e := range _err.Messages {
-		return errors.New(e.Text)
+		return err
 	}
 
+	if response.Has("error") {
+		return errors.New("draft deletion failed")
+	}
+
+	if strings.Contains(response.Json(), "başarıyla") {
+		return errors.New("draft deletion failed")
+	}
 	return nil
 }
 
-// Set the document type.
-func (b *bearer) SetDocumentType(document document.Type) Fatura {
-	b.document = document
-	return b
+// SetDocumentType sets the document type.
+func (f *Fatura) SetDocumentType(document document.Type) Fatura {
+	f.document = document
+	return *f
 }
 
-// Get the list of invoices.
-func (b *bearer) GetDocument(id uuid.UUID) (*entity.Array, error) {
-	params := url.Values{}
-	switch b.document {
+func (f *Fatura) GetDocument(id uuid.UUID) (types.Array, error) {
+	var body = types.Array{}
+
+	switch f.document {
 	case document.Invoice:
-		params.Add("cmd", "EARSIV_PORTAL_FATURA_GETIR")
-		params.Add("pageName", "RG_TASLAKLAR")
+		body.Add("cmd", "EARSIV_PORTAL_FATURA_GETIR")
+		body.Add("pageName", "RG_TASLAKLAR")
 	case document.ProducerReceipt:
-		params.Add("cmd", "EARSIV_PORTAL_MUSTAHSIL_GETIR")
-		params.Add("pageName", "RG_MUSTAHSIL")
+		body.Add("cmd", "EARSIV_PORTAL_MUSTAHSIL_GETIR")
+		body.Add("pageName", "RG_MUSTAHSIL")
 	case document.SelfEmployedReceipt:
-		params.Add("cmd", "EARSIV_PORTAL_SERBEST_MESLEK_GETIR")
-		params.Add("pageName", "RG_SERBEST")
+		body.Add("cmd", "EARSIV_PORTAL_SERBEST_MESLEK_GETIR")
+		body.Add("pageName", "RG_SERBEST")
+	default:
+		return nil, errors.New("invalid document type")
 	}
-	params.Add("ettn", id.String())
 
-	res, err := client.PostForm(b.gateway(DISPATCH), params)
+	body.Add("ettn", id.String())
+
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return nil, errors.New("Error while sending request: " + err.Error())
+		return nil, err
 	}
-	jsonData, err := ioutil.ReadAll(res.Body)
+
+	if response.Has("error") {
+		return nil, errors.New("document not found")
+	}
+
+	return response, nil
+}
+
+func (f *Fatura) GetDownloadURL(id uuid.UUID, signed bool) (string, error) {
+	var body = types.Array{}
+
+	body.Add("token", f.token)
+	body.Add("ettn", id.String())
+	body.Add("cmd", "EARSIV_PORTAL_FATURA_GOSTER")
+	body.Add("pageName", "RG_TASLAKLAR")
+	body.Add("onayDurumu", "Onaylanmadı")
+	if signed {
+		body.Add("onayDurumu", "Onaylandı")
+	}
+
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return nil, errors.New("Error while reading response: " + err.Error())
+		return "", err
 	}
-	var result = &entity.Array{}
-	err = json.Unmarshal(jsonData, &result)
+
+	if response.Has("error") {
+		return "", errors.New("download url not found")
+	}
+
+	if !response.Has("url") {
+		return "", errors.New("download url not found")
+	}
+
+	return response.Get("url"), nil
+}
+
+func (f *Fatura) CancellationRequest(id uuid.UUID, explanation string) (string, error) {
+	var body = types.Array{}
+
+	body.Add("token", f.token)
+	body.Add("ettn", id.String())
+	body.Add("cmd", "EARSIV_PORTAL_FATURA_IPTAL_ISTEK")
+	body.Add("pageName", "RG_TASLAKLAR")
+	body.Add("belgeTuru", "FATURA")
+	body.Add("talepAciklama", explanation)
+
+	response, err := gateway(DISPATCH, f.debug, body)
 	if err != nil {
-		return nil, errors.New("Error while parsing response: " + err.Error())
+		return "", errors.New("cancellation request failed")
 	}
-	return result, nil
+
+	if response.Has("error") {
+		return "", errors.New("cancellation request failed")
+	}
+
+	if !response.Has("talepNo") {
+		return "", errors.New("cancellation request failed")
+	}
+
+	return response.Get("talepNo"), nil
 }
 
-// Get the download url of the document.
-func (b *bearer) GetDownloadURL(id uuid.UUID, signed bool) (string, error) {
-	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
-		"token":    []string{b.token},
-		"ettn":     []string{id.String()},
-		"cmd":      []string{"EARSIV_PORTAL_FATURA_GOSTER"},
-		"pageName": []string{"RG_TASLAKLAR"},
-		"onayDurumu": func() []string {
-			if signed {
-				return []string{"Onaylandı"}
-			}
-			return []string{"Onaylanmadı"}
-		}(),
-	})
-
+func (f *Fatura) GetHtml(id uuid.UUID, signed bool) ([]byte, error) {
+	url, err := f.GetDownloadURL(id, signed)
 	if err != nil {
-		return "", errors.New("Error while sending request: " + err.Error())
+		return nil, err
 	}
-	jsonData, err := ioutil.ReadAll(res.Body)
-	return string(jsonData), nil
 
-}
-
-// Get the html of the document.
-func (b *bearer) GetHtml(id uuid.UUID, signed bool) ([]byte, error) {
-	return nil, errors.New("not implemented")
-}
-
-// TODO
-func (b *bearer) CancellationRequest(id uuid.UUID, explanation string) string {
-	res, err := client.PostForm(b.gateway(DISPATCH), url.Values{
-		"token":         []string{b.token},
-		"ettn":          []string{id.String()},
-		"cmd":           []string{"EARSIV_PORTAL_IPTAL_TALEBI_OLUSTUR"},
-		"pageName":      []string{"RG_TASLAKLAR"},
-		"belgeTuru":     []string{b.document.String()},
-		"talepAciklama": []string{explanation},
-	})
+	res, err := http.Get(url)
 	if err != nil {
-		return ""
+		return nil, err
 	}
-	jsonData, err := ioutil.ReadAll(res.Body)
-	return string(jsonData)
+
+	defer res.Body.Close()
+
+	var buf bytes.Buffer
+	i, err := io.Copy(&buf, res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if i == 0 {
+		return nil, errors.New("download url not found")
+	}
+
+	return buf.Bytes(), nil
 }
 
-// TODO
-func (b *bearer) ObjectionRequest() string {
-	panic("not implemented")
-}
+func (f *Fatura) GetPdf(id uuid.UUID, signed bool) (io.Reader, error) {
+	html, err := f.GetHtml(id, signed)
+	if err != nil {
+		return nil, err
+	}
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.AddPage()
+	pdf.Write(0, string(html))
 
-// TODO
-func (b *bearer) GetRequests(start, end string) []string {
-	panic("not implemented")
-}
+	var buf bytes.Buffer
+	err = pdf.Output(&buf)
+	if err != nil {
+		return nil, err
+	}
 
-// TODO
-func (b *bearer) GetAll(start, end string) {
-	panic("not implemented")
-}
-
-// TODO
-func (b *bearer) GetAllIssuedToMe(start, end, hourlySearch string) {
-	panic("not implemented")
-}
-
-// TODO
-func (b *bearer) FilterDocuments(document.Type) {
-	panic("not implemented")
-}
-
-// Select the column to be used in the list.
-func (b *bearer) SelectColumn(column, key string) lister {
-	b.column.Add(column, key)
-	return b
-}
-
-// Map the column to the entity.
-func (b *bearer) MapColumn(data []string) entity.Array {
-	panic("not implemented")
-}
-
-// Set the limit and offset.
-func (b *bearer) SetLimit(limit, offset int) lister {
-	b.limit = []int{limit, offset}
-	return b
-}
-
-// Sort the list in ascending order.
-func (b *bearer) SortAsc() lister {
-	b.sortByDesc = false
-	return b
-}
-
-// Sort the list in descending order.
-func (b *bearer) SortDesc() lister {
-	b.sortByDesc = true
-	return b
-}
-
-// Set the row count.
-func (b *bearer) SetRowCount(count int) lister {
-	b.rowCount = count
-	return b
-}
-
-// Get the row count.
-func (b *bearer) RowCount() int {
-	return b.rowCount
-}
-
-// Only get the signed documents.
-func (b *bearer) OnlySigned() lister {
-	b.filters.Add("onayDurumu", "Onaylandı")
-	return b
-}
-
-// Only get the unsigned documents.
-func (b *bearer) OnlyUnsigned() lister {
-	b.filters.Add("onayDurumu", "Onaylanmadı")
-	return b
-}
-
-// Only get the deleted documents.
-func (b *bearer) OnlyDeleted() lister {
-	b.filters.Add("onayDurumu", "Silinmiş")
-	return b
-}
-
-// Only get the documents with the given id.
-func (b *bearer) OnlyCurrent() lister {
-	b.filters.Add("belgeTuru", b.document.String())
-	return b
-}
-
-// Only get the documents with the given id.
-func (b *bearer) OnlyInvoice() lister {
-	b.filters.Add("belgeTuru", document.Invoice.String())
-	return b
-}
-
-// Only get the ProducerReceipt documents.
-func (b *bearer) OnlyProducerReceipt() lister {
-	b.filters.Add("belgeTuru", document.ProducerReceipt.String())
-	return b
-}
-
-// Only get the SelfEmployedReceipt documents.
-func (b *bearer) OnlySelfEmployedReceipt() lister {
-	b.filters.Add("belgeTuru", document.SelfEmployedReceipt.String())
-	return b
-}
-
-// Search for the given value in the document.
-func (b *bearer) FindRecipientName(value string) lister {
-	b.filters.Add("aliciUnvanAdSoyad", value)
-	return b
-}
-
-// Search for the given value in the document.
-func (b *bearer) FindRecipientId(value string) lister {
-	b.filters.Add("aliciVknTckn", value)
-	return b
-}
-
-// Search for the given value in the document.
-func (b *bearer) FindEttn(value string) lister {
-	b.filters.Add("ettn", value)
-	return b
-}
-
-// Search for the given value in the document.
-func (b *bearer) FindDocumentId(value string) lister {
-	b.filters.Add("belgeNumarasi", value)
-	return b
+	return &buf, nil
 }
