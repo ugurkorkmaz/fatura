@@ -142,7 +142,6 @@ func (f *Fatura) GetTestCredentials() (username, password string, err error) {
 		return "", "", errors.New("login failed")
 	}
 	return response.Get("userid"), "1", nil
-
 }
 
 // Set the username and password.
