@@ -38,7 +38,7 @@ func (a Array) Has(key string) bool {
 	return ok
 }
 
-// Json returns a JSON string representation of the map.
+// Returns a JSON string representation of the map.
 func (a Array) Json() string {
 	data, err := json.Marshal(a)
 	if err != nil {
