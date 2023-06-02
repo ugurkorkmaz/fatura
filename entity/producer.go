@@ -27,7 +27,10 @@ type ProducerReceipt struct {
 func (p *ProducerReceipt) Type() string {
 	return "MÜSTAHSİL MAKBUZU"
 }
-func (p *ProducerReceipt) Json() (string, error) {
+func (p *ProducerReceipt) Json() string {
 	b, err := json.Marshal(p)
-	return string(b), err
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }

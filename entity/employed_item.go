@@ -16,10 +16,10 @@ func (s *SelfEmployedItem) Name() string {
 	return "SERBEST MESLEK MAKBUZU MAL/HİZMET TABLOSU"
 }
 
-func (s *SelfEmployedItem) Json() (string, error) {
+func (s *SelfEmployedItem) Json() string {
 	b, err := json.Marshal(s)
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return string(b), nil
+	return string(b)
 }

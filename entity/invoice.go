@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/ugurkorkmaz/fatura/enum"
+	"github.com/ugurkorkmaz/fatura/enum/arsiv"
+	"github.com/ugurkorkmaz/fatura/enum/currency"
+	"github.com/ugurkorkmaz/fatura/enum/invoice"
 )
 
 type Array map[string]interface{}
@@ -17,13 +19,13 @@ type Invoice struct {
 	MahalleSemtIlce          string            `json:"mahalleSemtIlce"`
 	Sehir                    string            `json:"sehir"`
 	Ulke                     string            `json:"ulke"`
-	HangiTip                 enum.Arsiv        `json:"hangiTip"`
+	HangiTip                 arsiv.Type        `json:"hangiTip"`
 	BelgeNumarasi            string            `json:"belgeNumarasi"`
 	Tarih                    string            `json:"tarih"`
 	Saat                     string            `json:"saat"`
-	ParaBirimi               enum.Currency     `json:"paraBirimi"`
+	ParaBirimi               currency.Type     `json:"paraBirimi"`
 	DovizKuru                float64           `json:"dovizKuru"`
-	FaturaTipi               enum.Invoice      `json:"faturaTipi"`
+	FaturaTipi               invoice.Type      `json:"faturaTipi"`
 	SiparisNumarasi          string            `json:"siparisNumarasi"`
 	SiparisTarihi            string            `json:"siparisTarihi"`
 	IrsaliyeNumarasi         string            `json:"irsaliyeNumarasi"`
@@ -63,10 +65,10 @@ func (i *Invoice) Name() string {
 	return "FATURA"
 }
 
-func (i *Invoice) Json() (string, error) {
+func (i *Invoice) Json() string {
 	b, err := json.Marshal(i)
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return string(b), nil
+	return string(b)
 }

@@ -3,13 +3,13 @@ package entity
 import (
 	"encoding/json"
 
-	"github.com/ugurkorkmaz/fatura/enum"
+	"github.com/ugurkorkmaz/fatura/enum/unit"
 )
 
 type InvoiceItem struct {
 	MalHizmet        string    `json:"malHizmet"`
 	Miktar           float64   `json:"miktar"`
-	Birim            enum.Unit `json:"birim"`
+	Birim            unit.Type `json:"birim"`
 	BirimFiyat       float64   `json:"birimFiyat"`
 	KdvOrani         int       `json:"kdvOrani"`
 	Fiyat            float64   `json:"fiyat"`
@@ -45,10 +45,10 @@ func (i *InvoiceItem) New() *InvoiceItem {
 	}
 }
 
-func (i *InvoiceItem) Json() (string, error) {
+func (i *InvoiceItem) Json() string {
 	b, err := json.Marshal(i)
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return string(b), nil
+	return string(b)
 }

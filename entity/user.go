@@ -30,10 +30,10 @@ func (u *User) Name() string {
 	return "KULLANICI"
 }
 
-func (u *User) Json() (string, error) {
+func (u *User) Json() string {
 	b, err := json.Marshal(u)
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return string(b), nil
+	return string(b)
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/ugurkorkmaz/fatura/enum"
+	"github.com/ugurkorkmaz/fatura/enum/currency"
 )
 
 type SelfEmployedReceipt struct {
@@ -16,7 +16,7 @@ type SelfEmployedReceipt struct {
 	BelgeNumarasi     string           `json:"belgeNumarasi"`
 	Tarih             string           `json:"tarih"`
 	Saat              string           `json:"saat"`
-	ParaBirimi        enum.Currency    `json:"paraBirimi"`
+	ParaBirimi        currency.Type    `json:"paraBirimi"`
 	DovizKuru         float64          `json:"dovizKuru"`
 	AliciUnvan        string           `json:"aliciUnvan"`
 	Adres             string           `json:"adres"`
@@ -45,10 +45,10 @@ func (s *SelfEmployedReceipt) Name() string {
 	return "SERBEST MESLEK MAKBUZU"
 }
 
-func (s *SelfEmployedReceipt) Json() (string, error) {
+func (s *SelfEmployedReceipt) Json() string {
 	b, err := json.Marshal(s)
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return string(b), nil
+	return string(b)
 }
