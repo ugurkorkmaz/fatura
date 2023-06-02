@@ -1,48 +1,80 @@
 package fatura
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+	"strings"
+)
 
-type Array map[string][]string
-
-// Get returns the first value associated with the given key.
-func (a Array) Get(key string) string {
-	if a == nil {
-		return ""
-	}
-	vs := a[key]
-	if len(vs) == 0 {
-		return ""
-	}
-	return vs[0]
+type Key interface {
+	string | int
 }
 
-// Set sets the key to the specified value. It replaces any existing values.
-func (a Array) Set(key, value string) {
-	a[key] = []string{value}
+type Value interface {
+	[]string | string | int | bool | any
 }
 
-// Add adds the specified value to the slice of values associated with the key.
-// If the key does not already exist in the map, it creates a new key-value pair.
-func (a Array) Add(key, value string) {
-	a[key] = append(a[key], value)
+// Generic array type
+type Array[K Key, V Value] map[K]V
+
+func (a Array[K, V]) Get(key K) V {
+	return a[key]
 }
 
-// Del deletes the key-value pair associated with the specified key.
-func (a Array) Del(key string) {
+func (a Array[K, V]) Set(key K, value V) {
+	a[key] = value
+}
+
+func (a Array[K, V]) Del(key K) {
 	delete(a, key)
 }
 
-// Has checks whether the map contains the specified key.
-func (a Array) Has(key string) bool {
+func (a Array[K, V]) Has(key K) bool {
 	_, ok := a[key]
 	return ok
 }
 
-// Returns a JSON string representation of the map.
-func (a Array) Json() string {
+func (a Array[K, V]) Json() string {
 	data, err := json.Marshal(a)
 	if err != nil {
 		return ""
 	}
 	return string(data)
+}
+
+func (a Array[K, V]) Encode() string {
+	output := []string{}
+	for key, value := range a {
+		if encodeValue(value) != "" && encodeKey(key) != "" {
+			output = append(output, encodeKey(key)+"="+encodeValue(value))
+		}
+	}
+
+	return strings.Join(output, "&")
+}
+
+func encodeValue(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case []string:
+		return strings.Join(v, ",")
+	case int:
+		return strconv.Itoa(v)
+	case bool:
+		return strconv.FormatBool(v)
+	default:
+		return ""
+	}
+}
+
+func encodeKey(key any) string {
+	switch k := key.(type) {
+	case string:
+		return k
+	case int:
+		return strconv.Itoa(k)
+	default:
+		return ""
+	}
 }
