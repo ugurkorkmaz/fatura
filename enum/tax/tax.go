@@ -1,9 +1,11 @@
-package enum
+package tax
 
-type Tax int
+import "github.com/ugurkorkmaz/fatura/enum"
+
+type Type int
 
 const (
-	BankaMuameleleri Tax = iota + headEnumTax
+	BankaMuameleleri Type = iota + enum.HeadEnumTax
 	KKDFKesintisi
 	OTV1Liste
 	OTV2Liste
@@ -36,17 +38,17 @@ const (
 	SGKPrim
 )
 
-func (t Tax) String() string {
+func (t Type) String() string {
 	return [...]string{
 		"0021", "0061", "0071", "9077", "0073", "0074", "0075",
 		"0076", "0077", "1047", "1048", "4080", "4081", "9015",
 		"9021", "8001", "8002", "4071", "8004", "8005", "8006",
 		"8007", "8008", "0003", "0011", "9040", "4171", "9944",
 		"0059", "SGK_PRIM",
-	}[t-headEnumTax]
+	}[t-enum.HeadEnumTax]
 }
 
-func (t Tax) Alias() string {
+func (t Type) Alias() string {
 	return [...]string{
 		"Banka Muameleleri Vergisi", "KKDF Kesintisi", "ÖTV 1. Liste", "ÖTV 2. Liste",
 		"ÖTV 3. Liste", "ÖTV 4. Liste", "ÖTV 3A Liste", "ÖTV 3B Liste", "ÖTV 3C Liste",
@@ -57,10 +59,10 @@ func (t Tax) Alias() string {
 		"TK Kullanım", "TK Ruhsat", "Çevre Temizlik Vergisi", "Gelir Vergisi Stopajı",
 		"Kurumlar Vergisi Stopajı", "Mera Fonu", "ÖTV 1. Liste Tevkifat",
 		"Belediyelere Ödenen Hal Rüsumu", "Konaklama Vergisi", "SGK Prim Kesintisi",
-	}[t-headEnumTax]
+	}[t-enum.HeadEnumTax]
 }
 
-func (t Tax) HasVat() bool {
+func (t Type) HasVat() bool {
 	switch t {
 	case
 		KKDFKesintisi,
@@ -83,18 +85,18 @@ func (t Tax) HasVat() bool {
 	}
 }
 
-func (t Tax) IsStoppage() bool {
+func (t Type) IsStoppage() bool {
 	return t == KDVTevkifat || t == GVStopaj || t == KVStopaj || t == MeraFonu || t == SGKPrim
 }
 
-func (t Tax) IsWithholding() bool {
+func (t Type) IsWithholding() bool {
 	return t == KDVTevkifat || t == OTV1ListeTevkifat
 }
 
-func (t Tax) HasDefaultRate() bool {
+func (t Type) HasDefaultRate() bool {
 	return t == OTV1Liste || t == OTV1ListeTevkifat
 }
-func (t Tax) DefaultRate() int {
+func (t Type) DefaultRate() int {
 	switch t {
 	case OTV1Liste:
 		return 0
@@ -103,7 +105,7 @@ func (t Tax) DefaultRate() int {
 	}
 	return -1
 }
-func (t Tax) Codes(code any) (int, string) {
+func (t Type) Codes(code any) (int, string) {
 	switch code {
 	case 601:
 		return 40, "Yapım İşleri ile Bu İşlerle Birlikte İfa Edilen Mühendislik-Mimarlık ve Etüt-Proje Hizmetleri [KDVGUT-(I/C-2.1.3.2.1)]"

@@ -1,12 +1,12 @@
 package enum
 
 const (
-	head = iota * 1000
-	headEnumArsiv
-	headEnumCurrency
-	headEnumDocument
-	headEnumInvoice
-	headEnumMethod
-	headEnumTax
-	headEnumUnit
+	Head = iota * 1000
+	HeadEnumArsiv
+	HeadEnumCurrency
+	HeadEnumDocument
+	HeadEnumInvoice
+	HeadEnumMethod
+	HeadEnumTax
+	HeadEnumUnit
 )

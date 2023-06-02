@@ -1,8 +1,10 @@
-package enum
+package currency
 
-type Currency int
+import "github.com/ugurkorkmaz/fatura/enum"
 
-func (c Currency) String() string {
+type Type int
+
+func (t Type) String() string {
 	return [...]string{
 		"AFN", "DZD", "ARS", "AWG", "AUD", "AZM", "BSD", "BHD", "THB", "PAB", "BBD",
 		"BYR", "BZD", "BMD", "VEB", "BOB", "BGN", "BRL", "BND", "BIF", "CAD", "CVE",
@@ -19,10 +21,10 @@ func (c Currency) String() string {
 		"XAG", "SGD", "SKK", "SBD", "SOS", "LKR", "KGS", "TJS", "SHP", "SDD", "SRG",
 		"SEK", "CHF", "SYP", "BDT", "WST", "TZS", "KZT", "SIT", "TTD", "MNT", "TND",
 		"TRY", "UGX", "USD", "UZS", "VUV", "KRW", "YER", "JPY", "CNY", "ZWD", "PLN",
-	}[c-headEnumCurrency]
+	}[t-enum.HeadEnumCurrency]
 }
 
-func (c Currency) Alias() string {
+func (t Type) Alias() string {
 	return [...]string{
 		"Afghani", "Algerian Dinar", "Argentine Peso", "Aruban Guilder", "Australian Dollar",
 		"Azerbaijanian Manat", "Bahamian Dollar", "Bahraini Dinar", "Baht", "Balboa", "Barbados Dollar",
@@ -51,11 +53,11 @@ func (c Currency) Alias() string {
 		"Taka", "Tala", "Tanzanian Shilling", "Tenge", "Tolar", "Trinidad and Tobago Dollar", "Tugrik",
 		"Tunisian Dinar", "Turkish Lira", "Uganda Shilling", "American Dollar", "Uzbekistan Sum", "Vatu",
 		"Won", "Yemeni Rial", "Yen", "Yuan Renminbi", "Zimbabwe Dollar", "Zloty",
-	}[c-headEnumCurrency]
+	}[t-enum.HeadEnumCurrency]
 }
 
 const (
-	AFN Currency = iota + headEnumCurrency
+	AFN Type = iota + enum.HeadEnumCurrency
 	DZD
 	ARS
 	AWG
